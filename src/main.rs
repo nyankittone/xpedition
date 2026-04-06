@@ -9,7 +9,9 @@ use x11rb::protocol::Event;
 use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
 use x11rb::COPY_DEPTH_FROM_PARENT;
-// use x11rb_protocol::SequenceNumber;
+
+// program idea: draw a path controlled by WASD, and have it never be cleared, and have the path
+// color change over time.
 
 fn main() {
     let (display, screen_id) = x11rb::connect(None).unwrap();
