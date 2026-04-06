@@ -97,6 +97,22 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
         &[delete_signal]
     )?;
 
+    // Set the window title and class
+    display.change_property8 (
+        PropMode::REPLACE,
+        window,
+        AtomEnum::WM_CLASS,
+        AtomEnum::STRING,
+        b"xpedition-game",
+    )?;
+    display.change_property8 (
+        PropMode::REPLACE,
+        window,
+        AtomEnum::WM_NAME,
+        AtomEnum::STRING,
+        b"Xpedition Prototype",
+    )?;
+
     display.flush()?;
 
     // in a loop, handle keyboard inputs, Expose, and WM_DELETE_WINDOW
@@ -128,6 +144,8 @@ fn main() {
     let (display, screen) = x11rb::connect(None).unwrap();
     let screen = &display.setup().roots[screen];
     while_connected(&display, screen).unwrap();
+
+    // TODO: handle notification on crash here
 
     println!("Goodbye!!~ >w<");
 }
