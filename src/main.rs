@@ -1,6 +1,7 @@
 extern crate x11rb;
 
 use std::{time, thread};
+use std::fmt::{self, Display, Debug};
 
 use x11rb::connection::Connection;
 use x11rb::errors::{ConnectionError, ReplyError, ReplyOrIdError};
@@ -13,56 +14,98 @@ use x11rb::COPY_DEPTH_FROM_PARENT;
 // program idea: draw a path controlled by WASD, and have it never be cleared, and have the path
 // color change over time.
 
-fn main() {
-    let (display, screen_id) = x11rb::connect(None).unwrap();
-    let screen = &display.setup().roots[screen_id];
+// This type conceptually might be dumb.
+#[derive(Debug)]
+pub enum XError {
+    Connection(ConnectionError),
+    ReplyOrId(ReplyOrIdError),
+}
 
-    let window = display.generate_id().unwrap();
+impl Display for XError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Connection(error) => write!(formatter, "Connection error: {}", error)?,
+            Self::ReplyOrId(error) => write!(formatter, "Reply or ID error: {}", error)?,
+        }
+
+        Ok(())
+    }
+}
+
+impl std::error::Error for XError {}
+
+impl From<ConnectionError> for XError {
+    fn from(value: ConnectionError) -> Self {
+        Self::Connection(value)
+    }
+}
+
+impl From<ReplyOrIdError> for XError {
+    fn from(value: ReplyOrIdError) -> Self {
+        Self::ReplyOrId(value)
+    }
+}
+
+fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XError> {
+    const WIDTH: u16 = 800;
+    const HEIGHT: u16 = 600;
+    const LINE_THICKNESS: u32 = 4;
+
+    // create an appropriate GC and window
+    // generate XIDs for window and GC
+    let (window, gc) = (
+        display.generate_id().map_err(|e| XError::from(e))?,
+        display.generate_id().map_err(|e| XError::from(e))?,
+    );
+
+    // create GC and window
+    display.create_gc (
+        gc,
+        screen.root,
+        &CreateGCAux::default().foreground(screen.white_pixel).line_width(LINE_THICKNESS)
+    )?;
+
     display.create_window (
         COPY_DEPTH_FROM_PARENT,
         window,
         screen.root,
         0,
         0,
-        800,
-        600,
-        1,
+        WIDTH,
+        HEIGHT,
+        0,
         WindowClass::INPUT_OUTPUT,
-        screen.root_visual,
-        &CreateWindowAux {
-            background_pixel: Some(screen.black_pixel),
-            event_mask: Some(EventMask::EXPOSURE),
-            ..Default::default()
-        },
-    ).unwrap();
+        screen.root_visual, &CreateWindowAux::default()
+            .backing_pixel(screen.black_pixel)
+            .event_mask(EventMask::EXPOSURE)
+    )?;
 
-    // Window attributes?
+    // map the window
+    display.map_window(window)?;
+    display.flush()?;
 
-    // Create a graphics context???
-    let gc = display.generate_id().unwrap();
-    display.create_gc(
-        gc, 
-        screen.root,
-        &CreateGCAux::default().foreground(screen.white_pixel),
-    ).unwrap();
-
-    display.map_window(window).unwrap();
-    display.flush().unwrap();
-
-    // How to draw shapes????
-    loop {
-        match display.wait_for_event().unwrap() {
+    // in a loop, handle keyboard inputs, Expose, and WM_DELETE_WINDOW
+    // while also just drawing like normal.
+    #[allow(unreachable_code)]
+    Ok(loop {
+        match display.wait_for_event()? {
             Event::Expose(_) => {
-                display.poly_fill_rectangle(window, gc, &[Rectangle {
-                    x: 300,
-                    y: 300,
-                    width: 60,
-                    height: 80,
-                }]).unwrap();
+                display.poly_line (
+                    CoordMode::ORIGIN,
+                    window,
+                    gc,
+                    &[Point{x: 100, y: 100}, Point{x: 200, y: 150}]
+                )?;
             },
             _ => (),
         }
 
-        display.flush().unwrap();
-    }
+        display.flush()?;
+    })
+}
+
+fn main() {
+    let (display, screen) = x11rb::connect(None).unwrap();
+    let screen = &display.setup().roots[screen];
+    while_connected(&display, screen).unwrap();
 }
