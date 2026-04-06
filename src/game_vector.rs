@@ -49,9 +49,38 @@ macro_rules! two_overload {
     };
 }
 
+macro_rules! two_overload_assign {
+    ($trait:ident, $dep_trait:ident, $fn:ident, $op:tt) => {
+    impl<T: $dep_trait<Output = T> + Clone> $trait for GameVector<T> {
+        fn $fn(&mut self, rhs: Self) {
+            let x = self.x.clone() $op rhs.x;
+            let y = self.y.clone() $op rhs.y;
+            *self = Self {
+                x,
+                y,
+            }
+        }
+    }
+    impl<T: $dep_trait<Output = T> + Clone> $trait<T> for GameVector<T> {
+        fn $fn(&mut self, rhs: T) {
+            let x = self.x.clone() $op rhs.clone();
+            let y = self.y.clone() $op rhs.clone();
+            *self = Self {
+                x,
+                y,
+            }
+        }
+    }
+    };
+}
+
 two_overload!(Add, add, +);
 two_overload!(Sub, sub, -);
 two_overload!(Mul, mul, *);
 two_overload!(Div, div, /); // TODO: is it a good idea to have a special case just for division to
                             // support dividing by 0?
+two_overload_assign!(AddAssign, Add, add_assign, +);
+two_overload_assign!(SubAssign, Sub, sub_assign, -);
+two_overload_assign!(MulAssign, Mul, mul_assign, *);
+two_overload_assign!(DivAssign, Div, div_assign, /);
 
