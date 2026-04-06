@@ -27,8 +27,14 @@ fn main() {
         1,
         WindowClass::INPUT_OUTPUT,
         screen.root_visual,
-        &Default::default(),
+        &CreateWindowAux {
+            background_pixel: Some(screen.white_pixel),
+            ..Default::default()
+        },
     ).unwrap();
+
+    // Window attributes?
+    // Create a graphics context???
 
     display.map_window(window).unwrap();
     display.sync().unwrap();
