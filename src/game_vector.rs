@@ -1,4 +1,5 @@
 use std::ops::*;
+use x11rb::protocol::xproto::Point;
 
 // things to overload:
 // add
@@ -10,6 +11,7 @@ use std::ops::*;
 // *-
 // /=
 // We also would want overloads for single scalar values when appropriate.
+#[derive(Copy, Clone)]
 pub struct GameVector<T> {
     pub x: T,
     pub y: T,
@@ -20,6 +22,15 @@ impl<T> GameVector<T> {
         Self {
             x,
             y,
+        }
+    }
+}
+
+impl From<GameVector<i32>> for Point {
+    fn from(value: GameVector<i32>) -> Self {
+        Self {
+            x: value.x as i16,
+            y: value.y as i16,
         }
     }
 }
