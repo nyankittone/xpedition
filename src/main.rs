@@ -58,6 +58,9 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
         display.generate_id().map_err(|e| XError::from(e))?,
     );
 
+    let delete_signal = display.intern_atom(false, b"WM_DELETE_WINDOW")?;
+    let wm_protocols = display.intern_atom(false, b"WM_PROTOCOLS")?;
+
     // create GC and window
     display.create_gc (
         gc,
@@ -82,6 +85,18 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
 
     // map the window
     display.map_window(window)?;
+
+    // await the WM_DELETE_WINDOW atom and add it to WM_PROTOCOLS on our window
+    let delete_signal = delete_signal.reply().map_err(|e| ReplyOrIdError::from(e))?.atom;
+    let wm_protocols = wm_protocols.reply().map_err(|e| ReplyOrIdError::from(e))?.atom;
+    display.change_property32 (
+        PropMode::REPLACE,
+        window,
+        wm_protocols,
+        AtomEnum::ATOM,
+        &[delete_signal]
+    )?;
+
     display.flush()?;
 
     // in a loop, handle keyboard inputs, Expose, and WM_DELETE_WINDOW
@@ -94,8 +109,13 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
                     CoordMode::ORIGIN,
                     window,
                     gc,
-                    &[Point{x: 100, y: 100}, Point{x: 200, y: 150}]
+                    &[Point{x: 100, y: 100}, Point{x: 200, y: 150}, Point{x: 250, y: 250}]
                 )?;
+            },
+            Event::ClientMessage(ClientMessageEvent {format: 32, data, ..}) => {
+                if data.as_data32()[0] == delete_signal {
+                    return Ok(());
+                }
             },
             _ => (),
         }
@@ -108,4 +128,6 @@ fn main() {
     let (display, screen) = x11rb::connect(None).unwrap();
     let screen = &display.setup().roots[screen];
     while_connected(&display, screen).unwrap();
+
+    println!("Goodbye!!~ >w<");
 }
