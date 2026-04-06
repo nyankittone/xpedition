@@ -28,16 +28,39 @@ fn main() {
         WindowClass::INPUT_OUTPUT,
         screen.root_visual,
         &CreateWindowAux {
-            background_pixel: Some(screen.white_pixel),
+            background_pixel: Some(screen.black_pixel),
+            event_mask: Some(EventMask::EXPOSURE),
             ..Default::default()
         },
     ).unwrap();
 
     // Window attributes?
+
     // Create a graphics context???
+    let gc = display.generate_id().unwrap();
+    display.create_gc(
+        gc, 
+        screen.root,
+        &CreateGCAux::default().foreground(screen.white_pixel),
+    ).unwrap();
 
     display.map_window(window).unwrap();
-    display.sync().unwrap();
+    display.flush().unwrap();
 
-    thread::sleep(time::Duration::from_secs(5));
+    // How to draw shapes????
+    loop {
+        match display.wait_for_event().unwrap() {
+            Event::Expose(_) => {
+                display.poly_fill_rectangle(window, gc, &[Rectangle {
+                    x: 300,
+                    y: 300,
+                    width: 60,
+                    height: 80,
+                }]).unwrap();
+            },
+            _ => (),
+        }
+
+        display.flush().unwrap();
+    }
 }
