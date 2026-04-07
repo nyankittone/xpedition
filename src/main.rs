@@ -1,6 +1,6 @@
 extern crate x11rb;
 
-use std::{time, thread};
+use std::{time, thread, process};
 use std::fmt::{self, Display, Debug};
 
 use x11rb::connection::Connection;
@@ -13,6 +13,9 @@ use x11rb::COPY_DEPTH_FROM_PARENT;
 
 use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
+
+use notify_rust::{Notification, Urgency};
+use std::io::Write;
 
 // program idea: draw a path controlled by WASD, and have it never be cleared, and have the path
 // color change over time.
@@ -272,12 +275,42 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
     })
 }
 
+fn oopsie(error: XError) -> ! {
+    // Possibly the most "trust me bro" string handling code I've written in this langauge
+    let mut buffer = Vec::<u8>::with_capacity(256);
+    let _ = write!(buffer, "{error}");
+    let first_length = buffer.len();
+    for i in 0..first_length {
+        let replacement: &'static [u8] = match unsafe {buffer.get_unchecked(i)} {
+            b'<' => b"&lt;",
+            b'>' => b"&gt;",
+            b'&' => b"&amp;",
+            b'"' => b"&quot;",
+            something_else => {
+                buffer.push(*something_else);
+                continue;
+            },
+        };
+
+        buffer.extend(replacement);
+    }
+    let sanitized = unsafe {str::from_utf8_unchecked(&buffer[first_length..])};
+
+    Notification::new()
+        .summary("Xpedition has crashed! :(")
+        .body(sanitized)
+        .timeout(time::Duration::from_secs(10))
+        .show().unwrap();
+
+    process::exit(67)
+}
+
 fn main() {
     let (display, screen) = x11rb::connect(None).unwrap();
     let screen = &display.setup().roots[screen];
-    while_connected(&display, screen).unwrap();
-
-    // TODO: handle notification on crash here
+    if let Err(error) = while_connected(&display, screen) {
+        oopsie(error)
+    }
 
     println!("Goodbye!!~ >w<");
 }
