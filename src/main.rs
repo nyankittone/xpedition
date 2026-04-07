@@ -305,6 +305,10 @@ fn oopsie(error: XError) -> ! {
     process::exit(67)
 }
 
+// TODO: make better physics
+// TODO: have the GC alternate color
+// TODO: experiment with rotating graphics and images
+
 fn main() {
     let (display, screen) = x11rb::connect(None).unwrap();
     let screen = &display.setup().roots[screen];
