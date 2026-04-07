@@ -142,9 +142,10 @@ impl Keysymmer {
 fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XError> {
     const WIDTH: u16 = 800;
     const HEIGHT: u16 = 600;
-    const LINE_THICKNESS: u32 = 4;
+    const LINE_THICKNESS: u32 = 5;
     const MID_X: i32 = WIDTH as i32 / 2;
     const MID_Y: i32 = HEIGHT as i32 / 2;
+    const SCALE_FACTOR: i32 = 8;
 
     // create an appropriate GC and window
     // generate XIDs for window and GC
@@ -214,7 +215,7 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
     display.flush()?;
 
     // instantiating player state
-    let mut head_position = GameVector::<i32>::new(MID_X, MID_Y);
+    let mut head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
     let mut old_head_position = GameVector::<i32>::new(MID_X, MID_Y);
     let mut head_velocity = GameVector::<i32>::new(0, 0);
     let mut key_state = KeyState::new();
@@ -246,7 +247,7 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
             CoordMode::ORIGIN,
             window,
             gc,
-            &[old_head_position.into(), head_position.into()]
+            &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
         )?;
 
         head_velocity += key_state.make_vector();
@@ -254,7 +255,7 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
         head_position += head_velocity;
 
         display.flush()?;
-        thread::sleep(time::Duration::from_millis(32));
+        thread::sleep(time::Duration::from_millis(16));
     })
 }
 
