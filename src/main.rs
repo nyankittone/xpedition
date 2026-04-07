@@ -5,7 +5,7 @@ use std::fmt::{self, Display, Debug};
 
 use x11rb::connection::Connection;
 use x11rb::cookie::Cookie;
-use x11rb::errors::{ConnectionError, ReplyError, ReplyOrIdError};
+use x11rb::errors::{ConnectionError, ReplyOrIdError, ReplyError};
 use x11rb::protocol::xproto::*;
 use x11rb::protocol::Event;
 use x11rb::wrapper::ConnectionExt as _;
@@ -13,7 +13,6 @@ use x11rb::COPY_DEPTH_FROM_PARENT;
 
 use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
-use xpedition::{physics, game_vector};
 
 // program idea: draw a path controlled by WASD, and have it never be cleared, and have the path
 // color change over time.
@@ -22,6 +21,7 @@ use xpedition::{physics, game_vector};
 #[derive(Debug)]
 pub enum XError {
     Connection(ConnectionError),
+    Reply(ReplyError),
     ReplyOrId(ReplyOrIdError),
 }
 
@@ -30,6 +30,7 @@ impl Display for XError {
         match self {
             Self::Connection(error) => write!(formatter, "Connection error: {}", error)?,
             Self::ReplyOrId(error) => write!(formatter, "Reply or ID error: {}", error)?,
+            Self::Reply(error) => write!(formatter, "Reply error: {}", error)?,
         }
 
         Ok(())
@@ -47,6 +48,12 @@ impl From<ConnectionError> for XError {
 impl From<ReplyOrIdError> for XError {
     fn from(value: ReplyOrIdError) -> Self {
         Self::ReplyOrId(value)
+    }
+}
+
+impl From<ReplyError> for XError {
+    fn from(value: ReplyError) -> Self {
+        Self::Reply(value)
     }
 }
 
@@ -96,7 +103,6 @@ impl KeyState {
 pub struct ProtoKeysymmer<'a, D: Connection> {
     cookie: Cookie<'a, D, GetKeyboardMappingReply>,
     min_keycode: u8,
-    max_keycode: u8,
 }
 
 impl<'a, D: Connection> ProtoKeysymmer<'a, D> {
@@ -108,12 +114,11 @@ impl<'a, D: Connection> ProtoKeysymmer<'a, D> {
                 setup.max_keycode - setup.min_keycode + 1
             )?,
             min_keycode: setup.min_keycode,
-            max_keycode: setup.max_keycode,
         })
     }
 
     pub fn finish_init(self) -> Result<Keysymmer, XError> {
-        let keysyms = self.cookie.reply().map_err(|e| ReplyOrIdError::from(e))?;
+        let keysyms = self.cookie.reply()?;
         Ok(Keysymmer {
             keysyms,
             min_keycode: self.min_keycode,
@@ -127,7 +132,7 @@ pub struct Keysymmer {
 }
 
 impl Keysymmer {
-    pub fn code_to_sym(&self, code: Keycode, page: u8) -> Option<xkeysym::Keysym> {
+    pub fn code_to_sym(&self, code: Keycode, _page: u8) -> Option<xkeysym::Keysym> {
         // TODO: wtf do I do with the pages???
         xkeysym::keysym (
             KeyCode::new(code as u32),
@@ -185,8 +190,8 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
     display.map_window(window)?;
 
     // await the WM_DELETE_WINDOW atom and add it to WM_PROTOCOLS on our window
-    let delete_signal = delete_signal.reply().map_err(|e| ReplyOrIdError::from(e))?.atom;
-    let wm_protocols = wm_protocols.reply().map_err(|e| ReplyOrIdError::from(e))?.atom;
+    let delete_signal = delete_signal.reply()?.atom;
+    let wm_protocols = wm_protocols.reply()?.atom;
     display.change_property32 (
         PropMode::REPLACE,
         window,
@@ -226,6 +231,14 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
     Ok(loop {
         while let Some(event) = display.poll_for_event()? {
             match event {
+                Event::Expose(_) => {
+                    display.poly_line (
+                        CoordMode::ORIGIN,
+                        window,
+                        gc,
+                        &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
+                    )?;
+                },
                 Event::KeyPress(event) => {
                     let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
                     key_state.update(sym, true);
@@ -268,3 +281,4 @@ fn main() {
 
     println!("Goodbye!!~ >w<");
 }
+
