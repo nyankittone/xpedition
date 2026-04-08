@@ -9,7 +9,7 @@ use x11rb::errors::{ConnectionError, ReplyOrIdError, ReplyError};
 use x11rb::protocol::xproto::*;
 use x11rb::protocol::Event;
 use x11rb::wrapper::ConnectionExt as _;
-use x11rb::COPY_DEPTH_FROM_PARENT;
+use x11rb::{COPY_DEPTH_FROM_PARENT, rust_connection};
 
 use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
@@ -157,9 +157,8 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
 
     // create an appropriate GC and window
     // generate XIDs for window and GC
-    let (window, gc) = (
-        display.generate_id().map_err(|e| XError::from(e))?,
-        display.generate_id().map_err(|e| XError::from(e))?,
+    let (window, gc, font) = (
+        display.generate_id()?, display.generate_id()?, display.generate_id()?,
     );
 
     let keysymmer = ProtoKeysymmer::init(display)?;
@@ -167,12 +166,6 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
     let delete_signal = display.intern_atom(false, b"WM_DELETE_WINDOW")?;
     let wm_protocols = display.intern_atom(false, b"WM_PROTOCOLS")?;
 
-    // create GC and window
-    display.create_gc (
-        gc,
-        screen.root,
-        &CreateGCAux::default().foreground(screen.white_pixel).line_width(LINE_THICKNESS)
-    )?;
 
     display.create_window (
         COPY_DEPTH_FROM_PARENT,
@@ -188,6 +181,8 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
             .backing_pixel(screen.black_pixel)
             .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
     )?;
+
+    display.open_font(font, b"fixed")?;
 
     // map the window
     display.map_window(window)?;
@@ -219,8 +214,27 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
         b"Xpedition Prototype",
     )?;
 
+    // create GC
+    display.create_gc (
+        gc,
+        screen.root,
+        &CreateGCAux::default()
+            .foreground(screen.white_pixel)
+            .line_width(LINE_THICKNESS)
+            .font(font)
+    )?;
+
     let keysymmer = keysymmer.finish_init()?;
     display.flush()?;
+
+    // fuck it we font dis shit bruh
+    {
+        let font_path = display.get_font_path()?.reply()?;
+        println!("FONT PATH IS: {:?}", font_path.path.iter().map(|string| str::from_utf8(&string.name).unwrap().to_string()).collect::<Vec<String>>());
+        let fonts = display.list_fonts(u16::MAX, b"*")?.reply()?;
+        println!("ALL MY FONTS :3");
+        fonts.names.iter().for_each(|f| println!("{}",  str::from_utf8(&f.name).unwrap()));
+    }
 
     // instantiating player state
     let mut head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
@@ -265,6 +279,7 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
             gc,
             &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
         )?;
+        display.image_text8(window, gc, 20, 20, b"Hello, world!~ :3")?;
 
         head_velocity += key_state.make_vector();
         old_head_position = head_position;
@@ -305,6 +320,11 @@ fn oopsie(error: XError) -> ! {
     process::exit(67)
 }
 
+// TODO: Figure out the fonts situation
+    // I want fonts to reasonably scale up as I use them, at least up to a 4K screen. Is this
+    // possible with built-in fonts in X.Org and Xwayland? If not, can I load my own fonts in
+    // without sacrificing my sanity? If not, then doing fonts purely client-side, using Pango and
+    // Cairo for front rendering, will have to be my approach.
 // TODO: make better physics
 // TODO: have the GC alternate color
 // TODO: experiment with rotating graphics and images
