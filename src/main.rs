@@ -238,7 +238,7 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
 
     // instantiating player state
     let mut head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
-    let mut old_head_position = GameVector::<i32>::new(MID_X, MID_Y);
+    let mut old_head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
     let mut head_velocity = GameVector::<i32>::new(0, 0);
     let mut key_state = KeyState::new();
 
