@@ -407,6 +407,8 @@ struct Args {
 // TODO: Figure out the fonts situation
     // I want fonts to reasonably scale up as I use them, at least up to a 4K screen. This should
     // be possible with the X core font rendering, but I'll need to do it by having multiple fonts
+    // that are bitmap at multiple different scales that the program can switch between
+    // dynamically.
 // TODO: make better physics
 // TODO: have the GC alternate color
 // TODO: experiment with rotating graphics and images
