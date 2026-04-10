@@ -147,6 +147,37 @@ impl Keysymmer {
     }
 }
 
+fn load_the_font(display: &impl Connection, font_id: u32) -> Result<bool, XError> {
+    const FONT: &[u8] = b"-misc-dogica pixel-medium-r-normal--0-0-0-0-p-0-iso8859-15";
+    const FONT_PATH: &str = "assets/fonts/Dogica";
+
+    // We need a function to open the path for this font if it's not already in the font path.
+    // That's something that:
+    // * tries to see if this font exists
+    // * if not, check the font path
+    // * if the font path already contains the folder for the needed font, use fixed
+    // * else, set the font path to also include the dogma font
+    // * Try checking again that the font exists. If not, use fixed
+    // * else, use the dogma font we wanted to use this whole time.
+    // * If the old font path previously didn't have the dogma font path, restore the original font
+    // path after opening the font.
+    
+    let mut font_list = display.list_fonts(u16::MAX, FONT)?.reply()?;
+    if font_list.names.iter().map(|entry| &entry.name).any(|entry| entry == FONT) {
+        display.open_font(font_id, FONT)?;
+        return Ok(true);
+    }
+
+    // if not, check the font path. Does it have our custom font path already?
+    let old_font_path = display.get_font_path()?;
+    // While waiting, let's get the absolute path of the font directory.
+    // ...how We first need to be able to find the assets folder. That information should get
+    // passed on the command line as a flag, but if that flag is absent, how about we default to
+    // {program_path}/assets?
+
+    Ok(false)
+}
+
 fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XError> {
     const WIDTH: u16 = 800;
     const HEIGHT: u16 = 600;
@@ -155,11 +186,14 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
     const MID_Y: i32 = HEIGHT as i32 / 2;
     const SCALE_FACTOR: i32 = 8;
 
+
     // create an appropriate GC and window
     // generate XIDs for window and GC
     let (window, gc, font) = (
         display.generate_id()?, display.generate_id()?, display.generate_id()?,
     );
+
+    let font_cookie = display.list_fonts(64, FONT)?;
 
     let keysymmer = ProtoKeysymmer::init(display)?;
 
@@ -183,7 +217,6 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
             .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
     )?;
 
-    display.open_font(font, b"-misc-dogica pixel-medium-r-normal--0-0-0-0-p-0-iso8859-15")?;
 
     // map the window
     display.map_window(window)?;
@@ -282,7 +315,6 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
             gc,
             &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
         )?;
-        // display.image_text8(window, gc, 20, 20, coords_printout.as_bytes())?;
 
         head_velocity += key_state.make_vector();
         old_head_position = head_position;
