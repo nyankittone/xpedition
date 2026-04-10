@@ -1,7 +1,7 @@
 extern crate x11rb;
 
 use std::{time, thread, process};
-use std::fmt::{self, Display, Debug};
+use std::fmt::{self, Display, Debug, Write as _};
 
 use x11rb::connection::Connection;
 use x11rb::cookie::Cookie;
@@ -15,7 +15,7 @@ use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
 
 use notify_rust::{Notification, Urgency};
-use std::io::Write;
+use std::io::Write as _;
 
 // program idea: draw a path controlled by WASD, and have it never be cleared, and have the path
 // color change over time.
@@ -179,10 +179,11 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
         WindowClass::INPUT_OUTPUT,
         screen.root_visual, &CreateWindowAux::default()
             .backing_pixel(screen.black_pixel)
+            .background_pixel(screen.black_pixel)
             .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
     )?;
 
-    display.open_font(font, b"fixed")?;
+    display.open_font(font, b"-misc-dogica pixel-medium-r-normal--0-0-0-0-p-0-iso8859-15")?;
 
     // map the window
     display.map_window(window)?;
@@ -227,20 +228,13 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
     let keysymmer = keysymmer.finish_init()?;
     display.flush()?;
 
-    // fuck it we font dis shit bruh
-    {
-        let font_path = display.get_font_path()?.reply()?;
-        println!("FONT PATH IS: {:?}", font_path.path.iter().map(|string| str::from_utf8(&string.name).unwrap().to_string()).collect::<Vec<String>>());
-        let fonts = display.list_fonts(u16::MAX, b"*")?.reply()?;
-        println!("ALL MY FONTS :3");
-        fonts.names.iter().for_each(|f| println!("{}",  str::from_utf8(&f.name).unwrap()));
-    }
-
     // instantiating player state
     let mut head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
     let mut old_head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
     let mut head_velocity = GameVector::<i32>::new(0, 0);
     let mut key_state = KeyState::new();
+
+    let mut coords_printout = String::new();
 
     // in a loop, handle keyboard inputs, Expose, and WM_DELETE_WINDOW
     // while also just drawing like normal.
@@ -273,13 +267,17 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
             }
         }
 
+        coords_printout.clear();
+        let _ = write!(coords_printout, "x: {}, y: {}", head_position.x, head_position.y);
+
+        display.clear_area(true, window, 0, 0, 0, 0)?;
         display.poly_line (
             CoordMode::ORIGIN,
             window,
             gc,
             &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
         )?;
-        display.image_text8(window, gc, 20, 20, b"Hello, world!~ :3")?;
+        display.image_text8(window, gc, 20, 20, coords_printout.as_bytes())?;
 
         head_velocity += key_state.make_vector();
         old_head_position = head_position;
