@@ -14,6 +14,8 @@ use x11rb::{COPY_DEPTH_FROM_PARENT, rust_connection};
 use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
 
+use argh::FromArgs;
+
 use notify_rust::{Notification, Urgency};
 use std::io::Write as _;
 
@@ -193,8 +195,6 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
         display.generate_id()?, display.generate_id()?, display.generate_id()?,
     );
 
-    let font_cookie = display.list_fonts(64, FONT)?;
-
     let keysymmer = ProtoKeysymmer::init(display)?;
 
     let delete_signal = display.intern_atom(false, b"WM_DELETE_WINDOW")?;
@@ -217,6 +217,7 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
             .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
     )?;
 
+    display.open_font(font, b"fixed")?;
 
     // map the window
     display.map_window(window)?;
@@ -355,6 +356,14 @@ fn oopsie(error: XError) -> ! {
     process::exit(67)
 }
 
+#[derive(FromArgs, Debug)]
+/// Silly little game made with X11 APIs.
+struct Args {
+    /// where do we find the assets folder?
+    #[argh(option, default = "String::from(\"{self}/assets\")")]
+    assets_dir: String,
+}
+
 // TODO: Figure out the fonts situation
     // I want fonts to reasonably scale up as I use them, at least up to a 4K screen. Is this
     // possible with built-in fonts in X.Org and Xwayland? If not, can I load my own fonts in
@@ -365,6 +374,9 @@ fn oopsie(error: XError) -> ! {
 // TODO: experiment with rotating graphics and images
 
 fn main() {
+    let args: Args = argh::from_env();
+    println!("Args: {:?}", args);
+
     let (display, screen) = x11rb::connect(None).unwrap();
     let screen = &display.setup().roots[screen];
     if let Err(error) = while_connected(&display, screen) {
