@@ -234,7 +234,7 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
     let mut head_velocity = GameVector::<i32>::new(0, 0);
     let mut key_state = KeyState::new();
 
-    let mut coords_printout = String::new();
+    let mut debug_text_buffer = String::new();
 
     // in a loop, handle keyboard inputs, Expose, and WM_DELETE_WINDOW
     // while also just drawing like normal.
@@ -267,17 +267,22 @@ fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XEr
             }
         }
 
-        coords_printout.clear();
-        let _ = write!(coords_printout, "x: {}, y: {}", head_position.x, head_position.y);
-
         display.clear_area(true, window, 0, 0, 0, 0)?;
+
+        debug_text_buffer.clear();
+        let _ = write!(debug_text_buffer, "pos: {:?}", head_position);
+        display.image_text8(window, gc, 10, 20, debug_text_buffer.as_bytes())?;
+        debug_text_buffer.clear();
+        let _ = write!(debug_text_buffer, "vel: {:?}", head_velocity);
+        display.image_text8(window, gc, 10, 40, debug_text_buffer.as_bytes())?;
+
         display.poly_line (
             CoordMode::ORIGIN,
             window,
             gc,
             &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
         )?;
-        display.image_text8(window, gc, 20, 20, coords_printout.as_bytes())?;
+        // display.image_text8(window, gc, 20, 20, coords_printout.as_bytes())?;
 
         head_velocity += key_state.make_vector();
         old_head_position = head_position;
