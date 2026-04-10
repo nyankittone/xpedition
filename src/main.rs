@@ -1,5 +1,6 @@
 extern crate x11rb;
 
+use std::ops::Deref;
 use std::{time, thread, process};
 use std::fmt::{self, Display, Debug, Write as _};
 
@@ -14,7 +15,8 @@ use x11rb::{COPY_DEPTH_FROM_PARENT, rust_connection};
 use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
 
-use argh::FromArgs;
+use argh::{FromArgs, FromArgValue};
+use std::path::{Path, PathBuf};
 
 use notify_rust::{Notification, Urgency};
 use std::io::Write as _;
@@ -149,7 +151,7 @@ impl Keysymmer {
     }
 }
 
-fn load_the_font(display: &impl Connection, font_id: u32) -> Result<bool, XError> {
+fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result<bool, XError> {
     const FONT: &[u8] = b"-misc-dogica pixel-medium-r-normal--0-0-0-0-p-0-iso8859-15";
     const FONT_PATH: &str = "assets/fonts/Dogica";
 
@@ -180,7 +182,7 @@ fn load_the_font(display: &impl Connection, font_id: u32) -> Result<bool, XError
     Ok(false)
 }
 
-fn while_connected(display: &impl Connection, screen: &Screen) -> Result<(), XError> {
+fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) -> Result<(), XError> {
     const WIDTH: u16 = 800;
     const HEIGHT: u16 = 600;
     const LINE_THICKNESS: u32 = 5;
@@ -356,19 +358,55 @@ fn oopsie(error: XError) -> ! {
     process::exit(67)
 }
 
+#[derive(Debug)]
+struct AssetPath(PathBuf);
+impl Deref for AssetPath {
+    type Target = PathBuf;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl FromArgValue for AssetPath {
+    fn from_arg_value(value: &str) -> Result<Self, String> {
+        let mut returned = PathBuf::new();
+
+        let mut current = value;
+        while let Some((left, right)) = current.split_once("{") {
+            returned.push(left);
+
+            // get the closing brace
+            if let Some((inside, outside)) = right.split_once("}") {
+                match inside {
+                    "brace" => returned.push("{"),
+                    "self" => returned.push("urmomlol"),
+                    nono => return Err(format!("Invalid substitution inside brace: {nono}")),
+                }
+
+                current = outside;
+            } else {
+                return Err("Forgot closing brace".to_string());
+            }
+        }
+
+        returned.push(current);
+        Ok(Self(returned))
+    }
+}
+
 #[derive(FromArgs, Debug)]
 /// Silly little game made with X11 APIs.
 struct Args {
-    /// where do we find the assets folder?
-    #[argh(option, default = "String::from(\"{self}/assets\")")]
-    assets_dir: String,
+    /// specify assets directory
+    /// (default is {self}/assets, {self} substitutes for the program's running directory)
+    #[argh(option, short = 'a', default = "AssetPath(PathBuf::from(\"{self}/assets\"))")]
+    assets_dir: AssetPath,
 }
 
 // TODO: Figure out the fonts situation
-    // I want fonts to reasonably scale up as I use them, at least up to a 4K screen. Is this
-    // possible with built-in fonts in X.Org and Xwayland? If not, can I load my own fonts in
-    // without sacrificing my sanity? If not, then doing fonts purely client-side, using Pango and
-    // Cairo for front rendering, will have to be my approach.
+    // I want fonts to reasonably scale up as I use them, at least up to a 4K screen. This should
+    // be possible with the X core font rendering, but I'll need to do it by having multiple fonts
 // TODO: make better physics
 // TODO: have the GC alternate color
 // TODO: experiment with rotating graphics and images
@@ -379,7 +417,7 @@ fn main() {
 
     let (display, screen) = x11rb::connect(None).unwrap();
     let screen = &display.setup().roots[screen];
-    if let Err(error) = while_connected(&display, screen) {
+    if let Err(error) = while_connected(&args, &display, screen) {
         oopsie(error)
     }
 
