@@ -157,7 +157,7 @@ impl Keysymmer {
 
 fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result<bool, XError> {
     const FONT: &[u8] = b"-misc-dogica pixel-medium-r-normal--0-0-0-0-p-0-iso8859-15";
-    const FONT_PATH: &str = "assets/fonts/Dogica";
+    const FONT_PATH: &str = "fonts/Dogica";
 
     // Check to see if our desired font is already findable. If so, load it immediately and
     // return.
@@ -181,7 +181,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
             return Ok(false);
         },
     };
-    my_fonts.push("fonts/Dogica");
+    my_fonts.push(FONT_PATH);
     
     match my_fonts.try_exists() {
         Ok(false) => {
@@ -190,7 +190,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
         },
-        Err(error) => {
+        Err(_) => {
             let error = errors::ResourceIntegrityError::associate_path (
                 &args.assets_dir,
                 errors::ResourceError::from(my_fonts.as_path())
