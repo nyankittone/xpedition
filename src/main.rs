@@ -15,6 +15,7 @@ use x11rb::{COPY_DEPTH_FROM_PARENT, rust_connection};
 use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
 use xpedition::argparse::{self, Args};
+use xpedition::*;
 
 use argh::{FromArgs, FromArgValue};
 use std::path::{Path, PathBuf};
@@ -379,41 +380,6 @@ fn log_fatal(error: &impl std::error::Error, extra_message: Option<&str>) {
     eprintln!("{error}");
 }
 
-#[derive(Debug)]
-pub enum ResourceError<'a> {
-    StringResource(&'a str),
-    PathResource(&'a Path),
-}
-
-impl<'a> From<&'a str> for ResourceError<'a> {
-    fn from(value: &'a str) -> Self {
-        ResourceError::StringResource(value)
-    }
-}
-
-impl<'a> From<&'a Path> for ResourceError<'a> {
-    fn from(value: &'a Path) -> Self {
-        ResourceError::PathResource(value)
-    }
-}
-
-impl<'a> Display for ResourceError<'a> {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "missing asset: \"")?;
-        match self {
-            ResourceError::StringResource(string) => write!(formatter, "{string}")?,
-            ResourceError::PathResource(path) => {
-                let printable_path = path.to_string_lossy();
-                write!(formatter, "{printable_path}")
-            }?,
-        }
-
-        write!(formatter, "\"")
-    }
-}
-
-impl<'a> std::error::Error for ResourceError<'a> {}
-
 fn main() {
     let args: argparse::ProtoArgs = argh::from_env();
     let args = argparse::Args::new(args).unwrap();
@@ -421,7 +387,7 @@ fn main() {
     // Check that the passed in directory actually exists, as well as needed subdirectories
     match args.assets_dir.try_exists() {
         Ok(false) => {
-            log_fatal(&ResourceError::from(args.assets_dir.as_path()), None);
+            log_fatal(&errors::ResourceError::from(args.assets_dir.as_path()), None);
             process::exit(67);
         },
         Ok(true) => (),
