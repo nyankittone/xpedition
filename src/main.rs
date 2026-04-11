@@ -219,7 +219,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
 
     // Set the font path to include the Dogica font directory, now that it looks reasonable that
     // the reason it initially failed is due to having the font path set incorrectly.
-    let (my_fonts_as_str, _) = Str::try_parse(my_fonts.as_os_str().as_bytes()).unwrap();
+    let my_fonts_as_str = Str { name: Vec::from(my_fonts.as_os_str().as_bytes()) };
     let mut new_font_path = old_font_path;
     new_font_path.path.insert(0, my_fonts_as_str);
     let old_font_path = &new_font_path.path[1..];
@@ -236,6 +236,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     // Otherwise, just give up.
     display.open_font(font_id, b"fixed")?;
     display.set_font_path(old_font_path)?;
+    println!("MEOW");
     Ok(false)
 }
 
