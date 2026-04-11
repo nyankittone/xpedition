@@ -53,7 +53,7 @@ impl<'a> Display for ResourceError<'a> {
     }
 }
 
-impl<'a> std::error::Error for ResourceError<'a> {}
+impl<'a> Error for ResourceError<'a> {}
 
 #[derive(Debug)]
 pub struct ResourceIntegrityError<'a, 'b> {
