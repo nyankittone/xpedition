@@ -358,29 +358,38 @@ fn oopsie(error: XError) -> ! {
     process::exit(67)
 }
 
-#[derive(Debug)]
-struct AssetPath(PathBuf);
-impl Deref for AssetPath {
-    type Target = PathBuf;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+#[derive(FromArgs, Debug)]
+/// Silly little game made with X11 APIs.
+struct ProtoArgs {
+    /// specify assets directory
+    /// (default is {self}/assets, {self} substitutes for the program's running directory)
+    #[argh(option, short = 'a', default = "String::from(\"{self}/assets\")")]
+    assets_dir: String,
 }
 
-impl FromArgValue for AssetPath {
-    fn from_arg_value(value: &str) -> Result<Self, String> {
-        let mut returned = PathBuf::new();
+#[derive(Debug)]
+struct Args {
+    assets_dir: PathBuf,
+}
 
-        let mut current = value;
+impl Args {
+    pub fn new(from: ProtoArgs) -> Result<Self, String> {
+        let mut returned = String::new();
+
+        let mut current = from.assets_dir.as_str();
         while let Some((left, right)) = current.split_once("{") {
-            returned.push(left);
+            returned.push_str(left);
 
             // get the closing brace
             if let Some((inside, outside)) = right.split_once("}") {
                 match inside {
-                    "brace" => returned.push("{"),
-                    "self" => returned.push("urmomlol"),
+                    "brace" => returned.push_str("{"),
+                    "self" => {
+                        let thing = std::env::args().nth(0).unwrap();
+                        let thing_dir = Path::new(&thing);
+                        let thing_dir = thing_dir.parent().unwrap();
+                        returned.push_str(thing_dir.to_str().unwrap());
+                    },
                     nono => return Err(format!("Invalid substitution inside brace: {nono}")),
                 }
 
@@ -390,18 +399,11 @@ impl FromArgValue for AssetPath {
             }
         }
 
-        returned.push(current);
-        Ok(Self(returned))
+        returned.push_str(current);
+        Ok(Self {
+            assets_dir: returned.into(),
+        })
     }
-}
-
-#[derive(FromArgs, Debug)]
-/// Silly little game made with X11 APIs.
-struct Args {
-    /// specify assets directory
-    /// (default is {self}/assets, {self} substitutes for the program's running directory)
-    #[argh(option, short = 'a', default = "AssetPath(PathBuf::from(\"{self}/assets\"))")]
-    assets_dir: AssetPath,
 }
 
 // TODO: Figure out the fonts situation
@@ -414,7 +416,10 @@ struct Args {
 // TODO: experiment with rotating graphics and images
 
 fn main() {
-    let args: Args = argh::from_env();
+    let args: ProtoArgs = argh::from_env();
+    let args = Args::new(args).unwrap();
+
+
     println!("Args: {:?}", args);
 
     let (display, screen) = x11rb::connect(None).unwrap();
