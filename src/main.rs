@@ -360,7 +360,6 @@ fn oopsie(error: XError) -> ! {
     process::exit(67)
 }
 
-
 // TODO: Figure out the fonts situation
     // I want fonts to reasonably scale up as I use them, at least up to a 4K screen. This should
     // be possible with the X core font rendering, but I'll need to do it by having multiple fonts
@@ -370,9 +369,67 @@ fn oopsie(error: XError) -> ! {
 // TODO: have the GC alternate color
 // TODO: experiment with rotating graphics and images
 
+// TODO: Make this a macro or something
+fn log_fatal(error: &impl std::error::Error, extra_message: Option<&str>) {
+    eprint!("\x1b[1;91mfatal:\x1b[m ");
+    if let Some(message) = extra_message {
+        eprint!("{message}: ");
+    }
+
+    eprintln!("{error}");
+}
+
+#[derive(Debug)]
+pub enum ResourceError<'a> {
+    StringResource(&'a str),
+    PathResource(&'a Path),
+}
+
+impl<'a> From<&'a str> for ResourceError<'a> {
+    fn from(value: &'a str) -> Self {
+        ResourceError::StringResource(value)
+    }
+}
+
+impl<'a> From<&'a Path> for ResourceError<'a> {
+    fn from(value: &'a Path) -> Self {
+        ResourceError::PathResource(value)
+    }
+}
+
+impl<'a> Display for ResourceError<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "missing asset: \"")?;
+        match self {
+            ResourceError::StringResource(string) => write!(formatter, "{string}")?,
+            ResourceError::PathResource(path) => {
+                let printable_path = path.to_string_lossy();
+                write!(formatter, "{printable_path}")
+            }?,
+        }
+
+        write!(formatter, "\"")
+    }
+}
+
+impl<'a> std::error::Error for ResourceError<'a> {}
+
 fn main() {
     let args: argparse::ProtoArgs = argh::from_env();
     let args = argparse::Args::new(args).unwrap();
+    
+    // Check that the passed in directory actually exists, as well as needed subdirectories
+    match args.assets_dir.try_exists() {
+        Ok(false) => {
+            log_fatal(&ResourceError::from(args.assets_dir.as_path()), None);
+            process::exit(67);
+        },
+        Ok(true) => (),
+        Err(error) => {
+            log_fatal(&error, Some("cannot determine if asset directory exists"));
+            process::exit(67);
+        },
+    }
 
     println!("Args: {:?}", args);
 
