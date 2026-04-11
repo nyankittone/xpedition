@@ -27,7 +27,6 @@ use std::io::Write as _;
 // program idea: draw a path controlled by WASD, and have it never be cleared, and have the path
 // color change over time.
 
-// This type conceptually might be dumb.
 #[derive(Debug)]
 pub enum XError {
     Connection(ConnectionError),
@@ -178,9 +177,35 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     // if not, check the font path. Does it have our custom font path already?
     let old_font_path = display.get_font_path()?;
     // While waiting, let's get the absolute path of the font directory.
-    // ...how We first need to be able to find the assets folder. That information should get
-    // passed on the command line as a flag, but if that flag is absent, how about we default to
-    // {program_path}/assets?
+    
+    // TODO: Making this is cringe. Can we instead re-use some other path allocation later on?
+    // Cool.
+    let mut my_fonts = match std::path::absolute(args.assets_dir.as_path()) {
+        Ok(path) => path,
+        Err(error) => {
+            log_fatal(&error, Some("error trying to get font path"));
+            display.open_font(font_id, b"fixed")?;
+            return Ok(false);
+        },
+    };
+    my_fonts.push("fonts/Dogica");
+    
+    match my_fonts.try_exists() {
+        Ok(false) => {
+            // log_fatal(&error, Some("error trying to check if main font path exists"));
+            eprintln!("whooops!!!!! Couldn't get le fonte!!!");
+            display.open_font(font_id, b"fixed")?;
+            return Ok(false);
+        },
+        Err(error) => {
+            log_fatal(&error, None);
+            display.open_font(font_id, b"fixed")?;
+            return Ok(false);
+        },
+        _ => (),
+    }
+
+    // Await the X font path. Does it contain the dogica font directory?
 
     Ok(false)
 }
