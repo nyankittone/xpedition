@@ -11,6 +11,7 @@ use x11rb::protocol::xproto::*;
 use x11rb::protocol::Event;
 use x11rb::wrapper::ConnectionExt as _;
 use x11rb::{COPY_DEPTH_FROM_PARENT, rust_connection};
+use x11rb::x11_utils::TryParse;
 
 use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
@@ -19,6 +20,7 @@ use xpedition::*;
 
 use argh::{FromArgs, FromArgValue};
 use std::path::{Path, PathBuf};
+use std::os::unix::ffi::OsStrExt;
 
 use notify_rust::{Notification, Urgency};
 use std::io::Write as _;
@@ -157,18 +159,9 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     const FONT: &[u8] = b"-misc-dogica pixel-medium-r-normal--0-0-0-0-p-0-iso8859-15";
     const FONT_PATH: &str = "assets/fonts/Dogica";
 
-    // We need a function to open the path for this font if it's not already in the font path.
-    // That's something that:
-    // * tries to see if this font exists
-    // * if not, check the font path
-    // * if the font path already contains the folder for the needed font, use fixed
-    // * else, set the font path to also include the dogma font
-    // * Try checking again that the font exists. If not, use fixed
-    // * else, use the dogma font we wanted to use this whole time.
-    // * If the old font path previously didn't have the dogma font path, restore the original font
-    // path after opening the font.
-    
-    let mut font_list = display.list_fonts(u16::MAX, FONT)?.reply()?;
+    // Check to see if our desired font is already findable. If so, load it immediately and
+    // return.
+    let font_list = display.list_fonts(u16::MAX, FONT)?.reply()?;
     if font_list.names.iter().map(|entry| &entry.name).any(|entry| entry == FONT) {
         display.open_font(font_id, FONT)?;
         return Ok(true);
@@ -198,6 +191,10 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
             return Ok(false);
         },
         Err(error) => {
+            let error = errors::ResourceIntegrityError::associate_path (
+                &args.assets_dir,
+                errors::ResourceError::from(my_fonts.as_path())
+            );
             log_fatal(&error, None);
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
@@ -206,7 +203,39 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     }
 
     // Await the X font path. Does it contain the dogica font directory?
+    // If yes, then that's a problem, because it previously failed with that directory in-place to
+    // the best of our knowledge. Load fixed and log a reasonable error.
+    // TODO: Add additional check for this path but with a trailing forward slash.
+    let old_font_path = old_font_path.reply()?;
+    if old_font_path.path.iter().map(|entry| &entry.name).any(|entry| entry == my_fonts.as_os_str().as_bytes()) {
+        let error = errors::ResourceIntegrityError::associate_path (
+            &args.assets_dir,
+            errors::ResourceError::from(my_fonts.as_path()),
+        );
+        log_fatal(&error, None);
+        display.open_font(font_id, b"fixed")?;
+        return Ok(false);
+    }
 
+    // Set the font path to include the Dogica font directory, now that it looks reasonable that
+    // the reason it initially failed is due to having the font path set incorrectly.
+    let (my_fonts_as_str, _) = Str::try_parse(my_fonts.as_os_str().as_bytes()).unwrap();
+    let mut new_font_path = old_font_path;
+    new_font_path.path.insert(0, my_fonts_as_str);
+    let old_font_path = &new_font_path.path[1..];
+    display.set_font_path(&new_font_path.path)?;
+
+    // Check the font we initially checked for once again. Load it if successfully found.
+    let font_list = display.list_fonts(u16::MAX, FONT)?.reply()?;
+    if font_list.names.iter().map(|entry| &entry.name).any(|entry| entry == FONT) {
+        display.open_font(font_id, FONT)?;
+        display.set_font_path(old_font_path)?;
+        return Ok(true);
+    }
+
+    // Otherwise, just give up.
+    display.open_font(font_id, b"fixed")?;
+    display.set_font_path(old_font_path)?;
     Ok(false)
 }
 
@@ -247,7 +276,13 @@ fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) -> R
             .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
     )?;
 
-    display.open_font(font, b"fixed")?;
+    // Try to load the font lol
+    // display.open_font(font, b"fixed")?;
+    if load_the_font(args, display, font)? {
+        eprintln!("Successfully loaded the desired font! :3");
+    } else {
+        eprintln!("Falling back to using 'fixed'.");
+    }
 
     // map the window
     display.map_window(window)?;
