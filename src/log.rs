@@ -36,8 +36,7 @@ macro_rules! warn {
         eprintln!("\x1b[1;93mwarn:\x1b[m {}", format_args!($fmt, $($arg)*));
     }};
     ($error:expr) => {{
-        // typecheck
-        let error: std::error::Error = $error;
+        let error = $error;
         eprintln!("\x1b[1;93mwarn:\x1b[m {}", error);
     }};
     ($error:expr, $fmt:literal) => {{
