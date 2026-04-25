@@ -1,6 +1,5 @@
 extern crate x11rb;
 
-use std::ops::Deref;
 use std::{time, thread, process};
 use std::fmt::{self, Display, Debug, Write as _};
 
@@ -11,20 +10,16 @@ use x11rb::protocol::xproto::*;
 use x11rb::protocol::Event;
 use x11rb::wrapper::ConnectionExt as _;
 use x11rb::{COPY_DEPTH_FROM_PARENT, rust_connection};
-use x11rb::x11_utils::TryParse;
 
 use xkeysym::KeyCode;
 use xpedition::game_vector::GameVector;
 use xpedition::argparse::{self, Args};
 use xpedition::*;
 
-use argh::{FromArgs, FromArgValue};
-use std::path::{Path, PathBuf};
 use std::os::unix::ffi::OsStrExt;
 
 use notify_rust::{Notification, Urgency};
 use std::io::Write as _;
-
 
 // program idea: draw a path controlled by WASD, and have it never be cleared, and have the path
 // color change over time.
@@ -176,7 +171,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     let mut my_fonts = match std::path::absolute(args.assets_dir.as_path()) {
         Ok(path) => path,
         Err(error) => {
-            log_fatal(&error, Some("error trying to get font path"));
+            warn!(error, "error trying to get font path");
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
         },
@@ -185,8 +180,11 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     
     match my_fonts.try_exists() {
         Ok(false) => {
-            // log_fatal(&error, Some("error trying to check if main font path exists"));
-            eprintln!("whooops!!!!! Couldn't get le fonte!!!");
+            let error = errors::ResourceIntegrityError::associate_path (
+                &args.assets_dir,
+                errors::ResourceError::from(my_fonts.as_path())
+            );
+            warn!(error);
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
         },
@@ -195,7 +193,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
                 &args.assets_dir,
                 errors::ResourceError::from(my_fonts.as_path())
             );
-            log_fatal(&error, None);
+            warn!(error, "failed to check if font dirctory exists");
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
         },
