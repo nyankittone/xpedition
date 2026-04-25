@@ -246,7 +246,6 @@ fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) -> R
     const MID_Y: i32 = HEIGHT as i32 / 2;
     const SCALE_FACTOR: i32 = 8;
 
-
     // create an appropriate GC and window
     // generate XIDs for window and GC
     let (window, gc, font) = (
@@ -257,7 +256,6 @@ fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) -> R
 
     let delete_signal = display.intern_atom(false, b"WM_DELETE_WINDOW")?;
     let wm_protocols = display.intern_atom(false, b"WM_PROTOCOLS")?;
-
 
     display.create_window (
         COPY_DEPTH_FROM_PARENT,
@@ -270,7 +268,6 @@ fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) -> R
         0,
         WindowClass::INPUT_OUTPUT,
         screen.root_visual, &CreateWindowAux::default()
-            .backing_pixel(screen.black_pixel)
             .background_pixel(screen.black_pixel)
             .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
     )?;
@@ -278,9 +275,9 @@ fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) -> R
     // Try to load the font lol
     // display.open_font(font, b"fixed")?;
     if load_the_font(args, display, font)? {
-        eprintln!("Successfully loaded the desired font! :3");
+        info!("Successfully loaded the desired font! :3");
     } else {
-        eprintln!("Falling back to using 'fixed'.");
+        warn!("Falling back to using 'fixed'.");
     }
 
     // map the window
