@@ -52,6 +52,12 @@ fn oopsie(error: render::XError) -> ! {
 // TODO: Adjust physics so that we get natural decay in velcoity over time. (We may want to adjust
 // this over time)
 
+pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
+    let (mut renderer, keysymmer) = render::DisplayState::new(args)?;
+    renderer.run(&keysymmer)?;
+    Ok(())
+}
+
 fn main() {
     let args: argparse::ProtoArgs = argh::from_env();
     let args = argparse::Args::new(args).unwrap();
@@ -70,13 +76,7 @@ fn main() {
     }
 
     println!("Args: {:?}", args);
-
-    let (display, screen) = x11rb::connect(None).unwrap();
-    let screen = &display.setup().roots[screen];
-    if let Err(error) = render::init(&args, &display, screen) {
-        oopsie(error)
-    }
-
+    start_game(&args).unwrap_or_else(|error| oopsie(error));
     println!("Goodbye!!~ >w<");
 }
 

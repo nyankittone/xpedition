@@ -241,12 +241,12 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     Ok(false)
 }
 
-pub struct DisplayState<'a, D: Connection> {
-    display: &'a D,
-    screen: &'a Screen,
+pub struct DisplayState {
+    display: RustConnection,
     gc: u32,
     font: u32,
     window: u32,
+    wm_delete_window: u32,
 }
 
 const WIDTH: u16 = 800;
@@ -256,157 +256,161 @@ const MID_X: i32 = WIDTH as i32 / 2;
 const MID_Y: i32 = HEIGHT as i32 / 2;
 const SCALE_FACTOR: i32 = 8;
 
-impl<'a, D: Connection> DisplayState<'_, D> {
-pub fn init(display: &'a D, screen_id: usize, args: &Args) -> Result<(Self, Keysymmer), XError> {
-    let screen = &display.setup().roots[screen_id];
+impl DisplayState {
+    pub fn new(args: &Args) -> Result<(Self, Keysymmer), XError> {
+        let (display, screen) = x11rb::connect(None)?;
+        let screen = &display.setup().roots[screen];
 
-    // create an appropriate GC and window
-    // generate XIDs for window and GC
-    let (window, gc, font) = (
-        display.generate_id()?, display.generate_id()?, display.generate_id()?,
-    );
+        // create an appropriate GC and window
+        // generate XIDs for window and GC
+        let (window, gc, font) = (
+            display.generate_id()?, display.generate_id()?, display.generate_id()?,
+        );
 
-    let keysymmer = ProtoKeysymmer::init(&display)?;
+        let keysymmer = ProtoKeysymmer::init(&display)?;
 
-    let delete_signal = display.intern_atom(false, b"WM_DELETE_WINDOW")?;
-    let wm_protocols = display.intern_atom(false, b"WM_PROTOCOLS")?;
+        let delete_signal = display.intern_atom(false, b"WM_DELETE_WINDOW")?;
+        let wm_protocols = display.intern_atom(false, b"WM_PROTOCOLS")?;
 
-    display.create_window (
-        COPY_DEPTH_FROM_PARENT,
-        window,
-        screen.root,
-        0,
-        0,
-        WIDTH,
-        HEIGHT,
-        0,
-        WindowClass::INPUT_OUTPUT,
-        screen.root_visual, &CreateWindowAux::default()
-            .background_pixel(screen.black_pixel)
-            .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
-    )?;
-
-    // Try to load the font lol
-    // display.open_font(font, b"fixed")?;
-    if load_the_font(args, &display, font)? {
-        info!("Successfully loaded the desired font! :3");
-    } else {
-        warn!("Falling back to using 'fixed'.");
-    }
-
-    // map the window
-    display.map_window(window)?;
-
-    // await the WM_DELETE_WINDOW atom and add it to WM_PROTOCOLS on our window
-    let delete_signal = delete_signal.reply()?.atom;
-    let wm_protocols = wm_protocols.reply()?.atom;
-    display.change_property32 (
-        PropMode::REPLACE,
-        window,
-        wm_protocols,
-        AtomEnum::ATOM,
-        &[delete_signal]
-    )?;
-
-    // Set the window title and class
-    display.change_property8 (
-        PropMode::REPLACE,
-        window,
-        AtomEnum::WM_CLASS,
-        AtomEnum::STRING,
-        b"xpedition-game",
-    )?;
-    display.change_property8 (
-        PropMode::REPLACE,
-        window,
-        AtomEnum::WM_NAME,
-        AtomEnum::STRING,
-        b"Xpedition Prototype",
-    )?;
-
-    // create GC
-    display.create_gc (
-        gc,
-        screen.root,
-        &CreateGCAux::default()
-            .foreground(screen.white_pixel)
-            .line_width(LINE_THICKNESS)
-            .font(font)
-    )?;
-
-    let keysymmer = keysymmer.finish_init()?;
-    display.flush()?;
-
-    Ok((Self {
-        display,
-        screen,
-        gc,
-        font,
-        window,
-    }, keysymmer))
-}
-
-pub fn run(&mut self, keysymmer: &Keysymmer) -> Result<(), XError> {
-    // instantiating player state
-    let mut head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
-    let mut old_head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
-    let mut head_velocity = GameVector::<i32>::new(0, 0);
-    let mut key_state = KeyState::new();
-
-    let mut debug_text_buffer = String::new();
-
-
-    loop {
-        while let Some(event) = self.display.poll_for_event()? {
-            match event {
-                Event::Expose(_) => {
-                    self.display.poly_line (
-                        CoordMode::ORIGIN,
-                        self.window,
-                        gc,
-                        &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
-                    )?;
-                },
-                Event::KeyPress(event) => {
-                    let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
-                    key_state.update(sym, true);
-                },
-                Event::KeyRelease(event) => {
-                    let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
-                    key_state.update(sym, false);
-                },
-                Event::ClientMessage(ClientMessageEvent {format: 32, data, ..}) => {
-                    if data.as_data32()[0] == delete_signal {
-                        return Ok(());
-                    }
-                },
-                _ => (),
-            }
-        }
-
-        self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
-
-        debug_text_buffer.clear();
-        let _ = write!(debug_text_buffer, "pos: {:?}", head_position);
-        self.display.image_text8(self.window, gc, 10, 20, debug_text_buffer.as_bytes())?;
-        debug_text_buffer.clear();
-        let _ = write!(debug_text_buffer, "vel: {:?}", head_velocity);
-        self.display.image_text8(self.window, gc, 10, 40, debug_text_buffer.as_bytes())?;
-
-        self.display.poly_line (
-            CoordMode::ORIGIN,
-            self.window,
-            gc,
-            &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
+        display.create_window (
+            COPY_DEPTH_FROM_PARENT,
+            window,
+            screen.root,
+            0,
+            0,
+            WIDTH,
+            HEIGHT,
+            0,
+            WindowClass::INPUT_OUTPUT,
+            screen.root_visual, &CreateWindowAux::default()
+                .background_pixel(screen.black_pixel)
+                .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
         )?;
 
-        head_velocity += key_state.make_vector();
-        old_head_position = head_position;
-        head_position += head_velocity;
+        // Try to load the font lol
+        // display.open_font(font, b"fixed")?;
+        if load_the_font(args, &display, font)? {
+            info!("Successfully loaded the desired font! :3");
+        } else {
+            warn!("Falling back to using 'fixed'.");
+        }
 
-        self.display.flush()?;
-        thread::sleep(time::Duration::from_millis(16));
+        // map the window
+        display.map_window(window)?;
+
+        // await the WM_DELETE_WINDOW atom and add it to WM_PROTOCOLS on our window
+        let delete_signal = delete_signal.reply()?.atom;
+        let wm_protocols = wm_protocols.reply()?.atom;
+        display.change_property32 (
+            PropMode::REPLACE,
+            window,
+            wm_protocols,
+            AtomEnum::ATOM,
+            &[delete_signal]
+        )?;
+
+        // Set the window title and class
+        display.change_property8 (
+            PropMode::REPLACE,
+            window,
+            AtomEnum::WM_CLASS,
+            AtomEnum::STRING,
+            b"xpedition-game",
+        )?;
+        display.change_property8 (
+            PropMode::REPLACE,
+            window,
+            AtomEnum::WM_NAME,
+            AtomEnum::STRING,
+            b"Xpedition Prototype",
+        )?;
+
+        // create GC
+        display.create_gc (
+            gc,
+            screen.root,
+            &CreateGCAux::default()
+                .foreground(screen.white_pixel)
+                .line_width(LINE_THICKNESS)
+                .font(font)
+        )?;
+
+        let keysymmer = keysymmer.finish_init()?;
+        display.flush()?;
+
+        Ok((Self {
+            display,
+            gc,
+            font,
+            window,
+            wm_delete_window: delete_signal,
+        }, keysymmer))
     }
-}
+
+    pub fn gimme_display(&self) -> &RustConnection {
+        &self.display
+    }
+
+    pub fn run(&mut self, keysymmer: &Keysymmer) -> Result<(), XError> {
+        // instantiating player state
+        let mut head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
+        let mut old_head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
+        let mut head_velocity = GameVector::<i32>::new(0, 0);
+        let mut key_state = KeyState::new();
+
+        let mut debug_text_buffer = String::new();
+
+        loop {
+            while let Some(event) = self.display.poll_for_event()? {
+                match event {
+                    Event::Expose(_) => {
+                        self.display.poly_line (
+                            CoordMode::ORIGIN,
+                            self.window,
+                            self.gc,
+                            &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
+                        )?;
+                    },
+                    Event::KeyPress(event) => {
+                        let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
+                        key_state.update(sym, true);
+                    },
+                    Event::KeyRelease(event) => {
+                        let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
+                        key_state.update(sym, false);
+                    },
+                    Event::ClientMessage(ClientMessageEvent {format: 32, data, ..}) => {
+                        if data.as_data32()[0] == self.wm_delete_window {
+                            return Ok(());
+                        }
+                    },
+                    _ => (),
+                }
+            }
+
+            self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
+
+            debug_text_buffer.clear();
+            let _ = write!(debug_text_buffer, "pos: {:?}", head_position);
+            self.display.image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
+            debug_text_buffer.clear();
+            let _ = write!(debug_text_buffer, "vel: {:?}", head_velocity);
+            self.display.image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
+
+            self.display.poly_line (
+                CoordMode::ORIGIN,
+                self.window,
+                self.gc,
+                &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
+            )?;
+
+            head_velocity += key_state.make_vector();
+            old_head_position = head_position;
+            head_position += head_velocity;
+
+            self.display.flush()?;
+            thread::sleep(time::Duration::from_millis(16));
+        }
+    }
 
 }
