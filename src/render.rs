@@ -1,15 +1,16 @@
 extern crate x11rb;
 
-use std::{time, thread, process};
+use std::{time, thread};
 use std::fmt::{self, Display, Debug, Write as _};
 
 use x11rb::connection::Connection;
 use x11rb::cookie::Cookie;
-use x11rb::errors::{ConnectionError, ReplyOrIdError, ReplyError};
+use x11rb::errors::{ConnectionError, ReplyOrIdError, ReplyError, ConnectError};
 use x11rb::protocol::xproto::*;
 use x11rb::protocol::Event;
+use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
-use x11rb::{COPY_DEPTH_FROM_PARENT, rust_connection};
+use x11rb::COPY_DEPTH_FROM_PARENT;
 
 use xkeysym::KeyCode;
 use crate::game_vector::GameVector;
@@ -18,15 +19,10 @@ use crate::argparse::Args;
 
 use std::os::unix::ffi::OsStrExt;
 
-use notify_rust::{Notification, Urgency};
-use std::io::Write as _;
-
-// program idea: draw a path controlled by WASD, and have it never be cleared, and have the path
-// color change over time.
-
 #[derive(Debug)]
 pub enum XError {
-    Connection(ConnectionError),
+    ConnectionDied(ConnectionError),
+    FailedToConnect(ConnectError),
     Reply(ReplyError),
     ReplyOrId(ReplyOrIdError),
 }
@@ -34,7 +30,8 @@ pub enum XError {
 impl Display for XError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Connection(error) => write!(formatter, "Connection error: {}", error)?,
+            Self::ConnectionDied(error) => write!(formatter, "Connection error: {}", error)?,
+            Self::FailedToConnect(error) => write!(formatter, "Failed to connect: {}", error)?,
             Self::ReplyOrId(error) => write!(formatter, "Reply or ID error: {}", error)?,
             Self::Reply(error) => write!(formatter, "Reply error: {}", error)?,
         }
@@ -47,7 +44,7 @@ impl std::error::Error for XError {}
 
 impl From<ConnectionError> for XError {
     fn from(value: ConnectionError) -> Self {
-        Self::Connection(value)
+        Self::ConnectionDied(value)
     }
 }
 
@@ -60,6 +57,12 @@ impl From<ReplyOrIdError> for XError {
 impl From<ReplyError> for XError {
     fn from(value: ReplyError) -> Self {
         Self::Reply(value)
+    }
+}
+
+impl From<ConnectError> for XError {
+    fn from(value: ConnectError) -> Self {
+        Self::FailedToConnect(value)
     }
 }
 
@@ -238,13 +241,24 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     Ok(false)
 }
 
-pub fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) -> Result<(), XError> {
-    const WIDTH: u16 = 800;
-    const HEIGHT: u16 = 600;
-    const LINE_THICKNESS: u32 = 5;
-    const MID_X: i32 = WIDTH as i32 / 2;
-    const MID_Y: i32 = HEIGHT as i32 / 2;
-    const SCALE_FACTOR: i32 = 8;
+pub struct DisplayState<'a, D: Connection> {
+    display: &'a D,
+    screen: &'a Screen,
+    gc: u32,
+    font: u32,
+    window: u32,
+}
+
+const WIDTH: u16 = 800;
+const HEIGHT: u16 = 600;
+const LINE_THICKNESS: u32 = 5;
+const MID_X: i32 = WIDTH as i32 / 2;
+const MID_Y: i32 = HEIGHT as i32 / 2;
+const SCALE_FACTOR: i32 = 8;
+
+impl<'a, D: Connection> DisplayState<'_, D> {
+pub fn init(display: &'a D, screen_id: usize, args: &Args) -> Result<(Self, Keysymmer), XError> {
+    let screen = &display.setup().roots[screen_id];
 
     // create an appropriate GC and window
     // generate XIDs for window and GC
@@ -252,7 +266,7 @@ pub fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) 
         display.generate_id()?, display.generate_id()?, display.generate_id()?,
     );
 
-    let keysymmer = ProtoKeysymmer::init(display)?;
+    let keysymmer = ProtoKeysymmer::init(&display)?;
 
     let delete_signal = display.intern_atom(false, b"WM_DELETE_WINDOW")?;
     let wm_protocols = display.intern_atom(false, b"WM_PROTOCOLS")?;
@@ -274,7 +288,7 @@ pub fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) 
 
     // Try to load the font lol
     // display.open_font(font, b"fixed")?;
-    if load_the_font(args, display, font)? {
+    if load_the_font(args, &display, font)? {
         info!("Successfully loaded the desired font! :3");
     } else {
         warn!("Falling back to using 'fixed'.");
@@ -323,6 +337,16 @@ pub fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) 
     let keysymmer = keysymmer.finish_init()?;
     display.flush()?;
 
+    Ok((Self {
+        display,
+        screen,
+        gc,
+        font,
+        window,
+    }, keysymmer))
+}
+
+pub fn run(&mut self, keysymmer: &Keysymmer) -> Result<(), XError> {
     // instantiating player state
     let mut head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
     let mut old_head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
@@ -331,16 +355,14 @@ pub fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) 
 
     let mut debug_text_buffer = String::new();
 
-    // in a loop, handle keyboard inputs, Expose, and WM_DELETE_WINDOW
-    // while also just drawing like normal.
-    #[allow(unreachable_code)]
-    Ok(loop {
-        while let Some(event) = display.poll_for_event()? {
+
+    loop {
+        while let Some(event) = self.display.poll_for_event()? {
             match event {
                 Event::Expose(_) => {
-                    display.poly_line (
+                    self.display.poly_line (
                         CoordMode::ORIGIN,
-                        window,
+                        self.window,
                         gc,
                         &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
                     )?;
@@ -362,18 +384,18 @@ pub fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) 
             }
         }
 
-        display.clear_area(true, window, 0, 0, 0, 0)?;
+        self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
 
         debug_text_buffer.clear();
         let _ = write!(debug_text_buffer, "pos: {:?}", head_position);
-        display.image_text8(window, gc, 10, 20, debug_text_buffer.as_bytes())?;
+        self.display.image_text8(self.window, gc, 10, 20, debug_text_buffer.as_bytes())?;
         debug_text_buffer.clear();
         let _ = write!(debug_text_buffer, "vel: {:?}", head_velocity);
-        display.image_text8(window, gc, 10, 40, debug_text_buffer.as_bytes())?;
+        self.display.image_text8(self.window, gc, 10, 40, debug_text_buffer.as_bytes())?;
 
-        display.poly_line (
+        self.display.poly_line (
             CoordMode::ORIGIN,
-            window,
+            self.window,
             gc,
             &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
         )?;
@@ -382,7 +404,9 @@ pub fn while_connected(args: &Args, display: &impl Connection, screen: &Screen) 
         old_head_position = head_position;
         head_position += head_velocity;
 
-        display.flush()?;
+        self.display.flush()?;
         thread::sleep(time::Duration::from_millis(16));
-    })
+    }
+}
+
 }

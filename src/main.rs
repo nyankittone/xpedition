@@ -5,7 +5,6 @@ use xpedition::*;
 use notify_rust::Notification;
 use x11rb::connection::Connection;
 
-
 fn oopsie(error: render::XError) -> ! {
     // Possibly the most "trust me bro" string handling code I've written in this langauge
     let mut buffer = Vec::<u8>::with_capacity(256);
@@ -74,7 +73,7 @@ fn main() {
 
     let (display, screen) = x11rb::connect(None).unwrap();
     let screen = &display.setup().roots[screen];
-    if let Err(error) = render::while_connected(&args, &display, screen) {
+    if let Err(error) = render::init(&args, &display, screen) {
         oopsie(error)
     }
 
