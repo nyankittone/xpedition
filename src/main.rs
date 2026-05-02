@@ -210,7 +210,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
             &args.assets_dir,
             errors::ResourceError::from(my_fonts.as_path()),
         );
-        log_fatal(&error, None);
+        fatal!(error);
         display.open_font(font_id, b"fixed")?;
         return Ok(false);
     }
@@ -423,16 +423,6 @@ fn oopsie(error: XError) -> ! {
     // that are bitmap at multiple different scales that the program can switch between
     // dynamically.
 
-// TODO: Make this a macro or something
-fn log_fatal(error: &impl std::error::Error, extra_message: Option<&str>) {
-    eprint!("\x1b[1;91mfatal:\x1b[m ");
-    if let Some(message) = extra_message {
-        eprint!("{message}: ");
-    }
-
-    eprintln!("{error}");
-}
-
 // TODO: Separate ticking logic, event handling, and rendering logic into seperate threads.
 //   For making the ticker talk to the renderer, using a shared memory location behind a mutex is
 //   probably how I'll do it. The shared memory location will contain instructions on how to update
@@ -451,12 +441,12 @@ fn main() {
     // Check that the passed in directory actually exists, as well as needed subdirectories
     match args.assets_dir.try_exists() {
         Ok(false) => {
-            log_fatal(&errors::ResourceError::from(args.assets_dir.as_path()), None);
+            fatal!(&errors::ResourceError::from(args.assets_dir.as_path()));
             process::exit(67);
         },
         Ok(true) => (),
         Err(error) => {
-            log_fatal(&error, Some("cannot determine if asset directory exists"));
+            fatal!(&error, "cannot determine if asset directory exists");
             process::exit(67);
         },
     }

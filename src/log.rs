@@ -60,8 +60,8 @@ macro_rules! fatal {
     }};
     ($error:expr) => {{
         // typecheck
-        let error: std::error::Error = $error;
-        eprintln!("\x1b[1;91mfatal:\x1b[m {}", error);
+        // let error: std::error::Error = $error;
+        eprintln!("\x1b[1;91mfatal:\x1b[m {}", $error);
     }};
     ($error:expr, $fmt:literal) => {{
         eprintln!("\x1b[1;91mfatal:\x1b[m {}: {}", format_args!($fmt), $error);
