@@ -422,9 +422,6 @@ fn oopsie(error: XError) -> ! {
     // be possible with the X core font rendering, but I'll need to do it by having multiple fonts
     // that are bitmap at multiple different scales that the program can switch between
     // dynamically.
-// TODO: make better physics
-// TODO: have the GC alternate color
-// TODO: experiment with rotating graphics and images
 
 // TODO: Make this a macro or something
 fn log_fatal(error: &impl std::error::Error, extra_message: Option<&str>) {
@@ -435,6 +432,17 @@ fn log_fatal(error: &impl std::error::Error, extra_message: Option<&str>) {
 
     eprintln!("{error}");
 }
+
+// TODO: Separate ticking logic, event handling, and rendering logic into seperate threads.
+//   For making the ticker talk to the renderer, using a shared memory location behind a mutex is
+//   probably how I'll do it. The shared memory location will contain instructions on how to update
+//   the sprites on screen, adding new sprites to render, removing them, and how to interpolate them for
+//   frames between ticks.
+//   The event handler can use channels to send appropriate events to the
+//   ticker and the renderer.
+// TODO: Add a placeholder rendering thing for the protaganist
+// TODO: Adjust physics so that we get natural decay in velcoity over time. (We may want to adjust
+// this over time)
 
 fn main() {
     let args: argparse::ProtoArgs = argh::from_env();
