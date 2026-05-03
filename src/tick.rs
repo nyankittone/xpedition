@@ -4,6 +4,7 @@ use crate::game_vector::GameVector;
 
 
 pub struct Player {
+    position: GameVector<i64>,
     rotation: f32,
     velocity: GameVector<i32>,
     health_current: u32,
@@ -17,6 +18,7 @@ pub struct Player {
 }
 
 pub struct Asteroid {
+    position: GameVector<i64>,
     rotation: f32,
     velocity: GameVector<i32>,
     health_current: u16,
@@ -27,6 +29,7 @@ pub struct Asteroid {
 }
 
 pub struct Projectile {
+    position: GameVector<i64>,
     velocity: GameVector<i32>,
     color: u32,
 }
@@ -94,13 +97,21 @@ impl<const S: usize> EntityPool<S> {
         self.0.blocks_free += 1;
         Ok(())
     }
-}
 
-impl<const S: usize> Deref for EntityPool<S> {
-    type Target = [Option<Entity>; S];
+    pub fn get(&self, id: u32) -> Option<&Entity> {
+        let thing = self.0.entities.get(id as usize);
+        match thing {
+            Some(inner_thing) => inner_thing.as_ref(),
+            None => None,
+        }
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.0.entities
+    pub fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
+        let thing = self.0.entities.get_mut(id as usize);
+        match thing {
+            Some(inner_thing) => inner_thing.as_mut(),
+            None => None,
+        }
     }
 }
 
