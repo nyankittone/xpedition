@@ -62,12 +62,15 @@ impl<const S: usize> EntityPool<S> {
         }))
     }
 
-    pub fn allocate(&mut self) -> Option<&mut Option<Entity>> {
+    pub fn allocate(&mut self, entity: Entity) -> Option<u32> {
         if self.0.blocks_free == 0 {
             return None;
         }
 
-        let returned = self.0.entities.get_mut(self.0.fralloc_list[self.0.blocks_free as usize - 1] as usize).unwrap();
+        let returned = self.0.fralloc_list[self.0.blocks_free as usize - 1];
+        let new_entity = self.0.entities.get_mut(returned as usize).unwrap();
+        *new_entity = Some(entity);
+
         self.0.blocks_free -= 1;
         Some(returned)
     }
@@ -108,4 +111,14 @@ impl<const S: usize> EntityPool<S> {
 }
 
 // How will iterating over the allocated objects work?
+// The problem is that the entities allocated are free to allocate or free new entities as they
+// please, and this would happen while iterating. This could mess with the iterator itself in a
+// not-so-desireable way.
+// Either we design our allocator and iterators so that allocations and deletions are iterator-aware
+// and will update any active iterators when they occur so that they'll not iterate on inactive
+// cells, etc... or we don't allocate and delete things right away, and instead stage them until
+// iteration is complete.
+// The latter strategy seems easier and more straight-forward to accompilish, at the cost of *maybe*
+// being less flexiable. There is probably not a good reason to need to run a brand new entity
+// immediately before a tick is finished.
 
