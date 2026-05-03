@@ -65,7 +65,42 @@ impl<const S: usize> EntityPool<S> {
         }
 
         let returned = self.0.entities.get_mut(self.0.fralloc_list[self.0.blocks_free as usize - 1] as usize).unwrap();
+        self.0.blocks_free -= 1;
         Some(returned)
+    }
+
+    pub fn free(&mut self, index: u32) -> Result<(), ()> {
+        if self.0.blocks_free as usize >= S {
+            return Err(());
+        }
+
+        // find the index in the list of allocated indices.
+        // Then move the element there to the front of the allocated indices.
+        {
+            let blocks_free_usize = self.0.blocks_free as usize;
+            let allocated_indices = &mut self.0.fralloc_list[blocks_free_usize..];
+
+            let Some((found_index, _)) = allocated_indices
+                .iter()
+                .enumerate()
+                .find(|(_, e)| **e == index) else {
+                    return Err(());
+            };
+
+            allocated_indices[..=found_index].rotate_right(1);
+        }
+
+        self.0.entities[index as usize] = None;
+        self.0.blocks_free += 1;
+        Ok(())
+    }
+}
+
+impl<const S: usize> Deref for EntityPool<S> {
+    type Target = [Option<Entity>; S];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0.entities
     }
 }
 
