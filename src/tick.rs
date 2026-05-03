@@ -2,7 +2,6 @@ use core::{default::Default, ops::{Deref, DerefMut}};
 
 use crate::game_vector::GameVector;
 
-
 pub struct Player {
     position: GameVector<i64>,
     rotation: f32,
@@ -33,11 +32,6 @@ pub struct Projectile {
     velocity: GameVector<i32>,
     color: u32,
 }
-
-// TODO: We're going to need some memory allocator for all of these kind of objects. How fun.
-// A simple memory pool with a free list is probably the simplest approach, but will waste a lot
-// of memory. Especially if I have a lot of projectiles on-screen. However, I think this is the best
-// approach for my needs here.
 
 pub enum Entity {
     Player(Player),
@@ -107,6 +101,49 @@ impl<const S: usize> EntityPool<S> {
 
     pub fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
         self.0.entities.get_mut(id as usize).map_or(None, |thing| thing.as_mut())
+    }
+
+    // This feels like a failure of encapsulation...
+    pub fn get_allocated(&self) -> u32 {
+        S as u32 - self.0.blocks_free
+    }
+
+    pub fn get_all_ids(&self) -> &[u32] {
+        let blocks_free_usize = self.0.blocks_free as usize;
+        &self.0.fralloc_list[blocks_free_usize..]
+    }
+}
+
+pub struct EntityIterator<'a:, const S: usize> {
+    pool: &'a mut EntityPool<S>,
+    i: u32,
+}
+
+impl<'a, const S: usize> Iterator for EntityIterator<'a, S> {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i as usize >= S {
+            return None;
+        }
+
+        let returned = self.pool.0.fralloc_list[self.i as usize];
+        self.i += 1;
+
+        Some(returned)
+    }
+}
+
+impl<'a, const S: usize> EntityIterator<'a, S> {
+    pub fn next_ref(&mut self) -> Option<(u32, &mut Entity)> {
+        if self.i as usize >= S {
+            return None;
+        }
+
+        let index = self.pool.0.fralloc_list[self.i as usize];
+        self.i += 1;
+
+        Some((index, self.pool.get_mut(index).unwrap()))
     }
 }
 
