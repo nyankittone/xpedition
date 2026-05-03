@@ -1,4 +1,4 @@
-use core::default::Default;
+use core::{default::Default, ops::{Deref, DerefMut}};
 
 use crate::game_vector::GameVector;
 
@@ -42,38 +42,30 @@ pub enum Entity {
     Projectile(Projectile),
 }
 
-pub enum EntityCell<'a> {
-    Unallocated(Option<&'a EntityCell<'a>>),
-    Allocated {
-        next: Option<&'a EntityCell<'a>>,
-        entity: Entity,
-    },
+struct EntityPoolAllocation<const S: usize> {
+    blocks_free: u32,
+    fralloc_list: [u32; S],
+    entities: [Option<Entity>; S],
 }
 
-impl<'a> Default for EntityCell<'a> {
-    fn default() -> Self {
-        Self::Unallocated(None)
+pub struct EntityPool<const S: usize>(Box<EntityPoolAllocation<S>>);
+
+impl<const S: usize> EntityPool<S> {
+    pub fn new() -> Self {
+        Self(Box::new(EntityPoolAllocation {
+            blocks_free: S as u32,
+            fralloc_list: std::array::from_fn(|i| (S - i - 1) as u32),
+            entities: [const{None}; S],
+        }))
     }
-}
 
-pub struct EntityManager<'a> {
-    pool: &'a [EntityCell<'a>],
-    free_head: Option<&'a EntityCell<'a>>,
-    alloc_head: Option<&'a EntityCell<'a>>,
-}
-
-impl<'a> EntityManager<'a> {
-    pub fn manage(cells: &'a mut [EntityCell<'a>]) -> Self {
-        for i in 0..(cells.len() - 1) {
-            cells[i] = EntityCell::Unallocated(Some(&cells[i + 1]));
+    pub fn allocate(&mut self) -> Option<&mut Option<Entity>> {
+        if self.0.blocks_free == 0 {
+            return None;
         }
-        cells[cells.len() - 1] = EntityCell::Unallocated(None);
 
-        Self {
-            pool: cells,
-            free_head: Some(&cells[0]),
-            alloc_head: None,
-        }
+        let returned = self.0.entities.get_mut(self.0.fralloc_list[self.0.blocks_free as usize - 1] as usize).unwrap();
+        Some(returned)
     }
 }
 
