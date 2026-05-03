@@ -99,19 +99,13 @@ impl<const S: usize> EntityPool<S> {
     }
 
     pub fn get(&self, id: u32) -> Option<&Entity> {
-        let thing = self.0.entities.get(id as usize);
-        match thing {
-            Some(inner_thing) => inner_thing.as_ref(),
-            None => None,
-        }
+        self.0.entities.get(id as usize).map_or(None, |thing| thing.as_ref())
     }
 
     pub fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
-        let thing = self.0.entities.get_mut(id as usize);
-        match thing {
-            Some(inner_thing) => inner_thing.as_mut(),
-            None => None,
-        }
+        self.0.entities.get_mut(id as usize).map_or(None, |thing| thing.as_mut())
     }
 }
+
+// How will iterating over the allocated objects work?
 
