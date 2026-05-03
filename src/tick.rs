@@ -63,5 +63,17 @@ pub struct EntityManager<'a> {
 }
 
 impl<'a> EntityManager<'a> {
+    pub fn manage(cells: &'a mut [EntityCell<'a>]) -> Self {
+        for i in 0..(cells.len() - 1) {
+            cells[i] = EntityCell::Unallocated(Some(&cells[i + 1]));
+        }
+        cells[cells.len() - 1] = EntityCell::Unallocated(None);
+
+        Self {
+            pool: cells,
+            free_head: Some(&cells[0]),
+            alloc_head: None,
+        }
+    }
 }
 
