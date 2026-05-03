@@ -4,3 +4,4 @@ pub mod argparse;
 pub mod errors;
 pub mod log;
 pub mod render;
+pub mod tick;
