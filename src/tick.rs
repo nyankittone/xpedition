@@ -1,4 +1,4 @@
-use core::{default::Default, ops::{Deref, DerefMut}};
+use core::{default::Default};
 use std::cell::{RefCell, RefMut};
 
 use crate::game_vector::GameVector;
@@ -219,13 +219,17 @@ pub fn start_physics() {
     }));
     pool_handle.allocate(Entity::Asteriod(Asteroid::default()));
 
-    // drop(pool_handle);
+    drop(pool_handle);
 
     for (id, mut handle) in pool.iter() {
-        eprintln!("{}", id);
+        eprintln!("I am ID {}.", id);
 
-        let myself = handle.get_mut(id);
-        eprintln!("{:?}", myself);
+        let player = handle.get_mut(0);
+        let thing = handle.get_mut(1);
+        if let Some(Entity::Player(player)) = player {
+            player.velocity += 1;
+            eprintln!("Player velocity is now: {:?}", player.velocity);
+        }
     }
 }
 
