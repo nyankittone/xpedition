@@ -1,5 +1,5 @@
 use core::{default::Default, ops::{Deref, DerefMut}};
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 
 use crate::game_vector::GameVector;
 
@@ -52,7 +52,7 @@ pub struct EntityPoolAllocation<const S: usize> {
 }
 
 impl<const S: usize> EntityPoolAllocation<S> {
-    pub fn allocate(&mut self, entity: Entity) -> Option<u32> {
+    fn allocate(&mut self, entity: Entity) -> Option<u32> {
         if self.blocks_free == 0 {
             return None;
         }
@@ -65,7 +65,7 @@ impl<const S: usize> EntityPoolAllocation<S> {
         Some(returned)
     }
 
-    pub fn free(&mut self, index: u32) -> Result<(), ()> {
+    fn free(&mut self, index: u32) -> Result<(), ()> {
         if self.blocks_free as usize >= S {
             return Err(());
         }
@@ -91,12 +91,57 @@ impl<const S: usize> EntityPoolAllocation<S> {
         Ok(())
     }
 
-    pub fn get(&self, id: u32) -> Option<&Entity> {
+    fn get(&self, id: u32) -> Option<&Entity> {
         self.entities.get(id as usize).map_or(None, |thing| thing.as_ref())
     }
 
-    pub fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
+    fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
         self.entities.get_mut(id as usize).map_or(None, |thing| thing.as_mut())
+    }
+}
+
+pub trait EntityPoolHandle {
+    fn allocate(&mut self, entity: Entity) -> Option<u32>;
+    fn free(&mut self, index: u32) -> Result<(), ()>;
+    fn get(&self, id: u32) -> Option<&Entity>;
+    fn get_mut(&mut self, id: u32) -> Option<&mut Entity>;
+}
+
+pub struct EntityDirectAllocHandle<'a, const S: usize>(RefMut<'a, EntityPoolAllocation<S>>);
+impl<'a, const S: usize> EntityPoolHandle for EntityDirectAllocHandle<'a, S> {
+    fn allocate(&mut self, entity: Entity) -> Option<u32> {
+        self.0.allocate(entity)
+    }
+
+    fn free(&mut self, index: u32) -> Result<(), ()> {
+        self.0.free(index)
+    }
+
+    fn get(&self, id: u32) -> Option<&Entity> {
+        self.0.get(id)
+    }
+
+    fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
+        self.0.get_mut(id)
+    }
+}
+
+pub struct EntityIndirectAllocHandle<'a, const S: usize>(RefMut<'a, EntityPoolAllocation<S>>);
+impl<'a, const S: usize> EntityPoolHandle for EntityIndirectAllocHandle<'a, S> {
+    fn allocate(&mut self, entity: Entity) -> Option<u32> {
+        None
+    }
+
+    fn free(&mut self, index: u32) -> Result<(), ()> {
+        Err(())
+    }
+
+    fn get(&self, id: u32) -> Option<&Entity> {
+        self.0.get(id)
+    }
+
+    fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
+        self.0.get_mut(id)
     }
 }
 
@@ -115,46 +160,40 @@ impl<const S: usize> EntityPool<S> {
         ))}
     }
 
-    // pub fn iter(&mut self) -> EntityIterator<'_, S> {
-    //     EntityIterator {
-    //         i: self..blocks_free,
-    //         pool: self,
-    //     }
-    // }
+    pub fn get_handle(&self) -> EntityDirectAllocHandle<'_, S> {
+        EntityDirectAllocHandle(self.pool.borrow_mut())
+    }
+
+    pub fn iter(&self) -> EntityIterator<'_, S> {
+        let i = self.pool.borrow().blocks_free;
+
+        EntityIterator {
+            i,
+            pool: &self.pool,
+        }
+    }
 }
 
 pub struct EntityIterator<'a:, const S: usize> {
-    pool: &'a mut EntityPool<S>,
+    pool: &'a RefCell<EntityPoolAllocation<S>>,
     i: u32,
 }
 
-// impl<'a, const S: usize> Iterator for EntityIterator<'a, S> {
-//     type Item = u32;
-//
-//     fn next(&mut self) -> Option<Self::Item> {
-//         if self.i as usize >= S {
-//             return None;
-//         }
-//
-//         let returned = self.pool.0.fralloc_list[self.i as usize];
-//         self.i += 1;
-//
-//         Some(returned)
-//     }
-// }
-//
-// impl<'a, const S: usize> EntityIterator<'a, S> {
-//     pub fn next_ref(&mut self) -> Option<(u32, &mut Entity)> {
-//         if self.i as usize >= S {
-//             return None;
-//         }
-//
-//         let index = self.pool.0.fralloc_list[self.i as usize];
-//         self.i += 1;
-//
-//         Some((index, self.pool.get_mut(index).unwrap()))
-//     }
-// }
+impl<'a, const S: usize> Iterator for EntityIterator<'a, S> {
+    type Item = (u32, EntityIndirectAllocHandle<'a, S>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i as usize >= S {
+            return None;
+        }
+
+        let handle = self.pool.borrow_mut();
+        let returned = handle.fralloc_list[self.i as usize];
+        self.i += 1;
+
+        Some((returned, EntityIndirectAllocHandle(handle)))
+    }
+}
 
 // How will iterating over the allocated objects work?
 // The problem is that the entities allocated are free to allocate or free new entities as they
@@ -170,7 +209,7 @@ pub struct EntityIterator<'a:, const S: usize> {
 
 pub fn start_physics() {
     let pool = EntityPool::<1024>::new();
-    let mut pool_handle = pool.pool.borrow_mut();
+    let mut pool_handle = pool.get_handle();
     pool_handle.allocate(Entity::Player(Player {
         velocity: GameVector {
             x: 1,
@@ -178,9 +217,15 @@ pub fn start_physics() {
         },
         ..Player::default()
     }));
-
     pool_handle.allocate(Entity::Asteriod(Asteroid::default()));
-    eprintln!("{:#?}", pool_handle.get(0).unwrap());
-    eprintln!("{:#?}", pool_handle.get(1).unwrap());
+
+    // drop(pool_handle);
+
+    for (id, mut handle) in pool.iter() {
+        eprintln!("{}", id);
+
+        let myself = handle.get_mut(id);
+        eprintln!("{:?}", myself);
+    }
 }
 
