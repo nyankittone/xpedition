@@ -2,6 +2,7 @@ use core::{default::Default, ops::{Deref, DerefMut}};
 
 use crate::game_vector::GameVector;
 
+#[derive(Default, Debug)]
 pub struct Player {
     position: GameVector<i64>,
     rotation: f32,
@@ -16,6 +17,8 @@ pub struct Player {
     fuel_max: u32,
 }
 
+// Having GameVector derive default might be a really bad idea long-term, but this is temporary.
+#[derive(Default, Debug)]
 pub struct Asteroid {
     position: GameVector<i64>,
     rotation: f32,
@@ -27,12 +30,14 @@ pub struct Asteroid {
     points: [f32; 8],
 }
 
+#[derive(Debug)]
 pub struct Projectile {
     position: GameVector<i64>,
     velocity: GameVector<i32>,
     color: u32,
 }
 
+#[derive(Debug)]
 pub enum Entity {
     Player(Player),
     Asteriod(Asteroid),
@@ -103,14 +108,11 @@ impl<const S: usize> EntityPool<S> {
         self.0.entities.get_mut(id as usize).map_or(None, |thing| thing.as_mut())
     }
 
-    // This feels like a failure of encapsulation...
-    pub fn get_allocated(&self) -> u32 {
-        S as u32 - self.0.blocks_free
-    }
-
-    pub fn get_all_ids(&self) -> &[u32] {
-        let blocks_free_usize = self.0.blocks_free as usize;
-        &self.0.fralloc_list[blocks_free_usize..]
+    pub fn iter(&mut self) -> EntityIterator<'_, S> {
+        EntityIterator {
+            i: self.0.blocks_free,
+            pool: self,
+        }
     }
 }
 
@@ -158,4 +160,22 @@ impl<'a, const S: usize> EntityIterator<'a, S> {
 // The latter strategy seems easier and more straight-forward to accompilish, at the cost of *maybe*
 // being less flexiable. There is probably not a good reason to need to run a brand new entity
 // immediately before a tick is finished.
+
+pub fn start_physics() {
+    let mut pool = EntityPool::<1024>::new();
+    pool.allocate(Entity::Player(Player {
+        velocity: GameVector {
+            x: 1,
+            y: 1,
+        },
+        ..Player::default()
+    }));
+
+    pool.allocate(Entity::Asteriod(Asteroid::default()));
+
+    for id in pool.iter() {
+        let entity = pool.get_mut(id).unwrap();
+        eprintln!("{id:#?}");
+    }
+}
 

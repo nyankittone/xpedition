@@ -53,6 +53,8 @@ fn oopsie(error: render::XError) -> ! {
 // this over time)
 
 pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
+    tick::start_physics();
+
     let (mut renderer, keysymmer) = render::DisplayState::new(args)?;
     renderer.run(&keysymmer)?;
     Ok(())

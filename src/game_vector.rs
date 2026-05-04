@@ -11,7 +11,7 @@ use x11rb::protocol::xproto::Point;
 // *-
 // /=
 // We also would want overloads for single scalar values when appropriate.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct GameVector<T> {
     pub x: T,
     pub y: T,
