@@ -1,10 +1,11 @@
 use core::{default::Default};
 use std::cell::{RefCell, RefMut, Ref};
 use std::mem::MaybeUninit;
+use std::clone::Clone;
 
 use crate::game_vector::GameVector;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct Player {
     position: GameVector<i64>,
     rotation: f32,
@@ -20,7 +21,7 @@ pub struct Player {
 }
 
 // Having GameVector derive default might be a really bad idea long-term, but this is temporary.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct Asteroid {
     position: GameVector<i64>,
     rotation: f32,
@@ -32,14 +33,14 @@ pub struct Asteroid {
     points: [f32; 8],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Projectile {
     position: GameVector<i64>,
     velocity: GameVector<i32>,
     color: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Entity {
     Player(Player),
     Asteriod(Asteroid),
@@ -51,7 +52,9 @@ pub struct EntityPoolAllocation<const S: usize, const Q: usize> {
     fralloc_list: [u32; S],
     entities: [Option<RefCell<Entity>>; S],
     alloc_queue: [MaybeUninit<Entity>; Q],
-    free_queue: [MaybeUninit<Entity>; Q],
+    alloc_queue_length: u32,
+    free_queue: [MaybeUninit<u32>; Q],
+    free_queue_length: u32,
 }
 
 impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
@@ -91,6 +94,54 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
 
         self.entities[index as usize] = None;
         self.blocks_free += 1;
+        Ok(())
+    }
+
+    fn queue_allocate(&mut self, entity: Entity) -> Result<(), ()> {
+        if self.alloc_queue_length as usize >= Q {
+            return Err(());
+        }
+
+        unsafe {
+            self.alloc_queue.get_unchecked_mut(self.alloc_queue_length as usize).write(entity);
+        }
+        self.alloc_queue_length += 1;
+
+        Ok(())
+    }
+
+    fn queue_free(&mut self, id: EntityID) -> Result<(), ()> {
+        if self.alloc_queue_length as usize >= Q {
+            return Err(());
+        }
+
+        unsafe {
+            self.free_queue.get_unchecked_mut(self.free_queue_length as usize).write(id);
+        }
+        self.free_queue_length += 1;
+
+        Ok(())
+    }
+
+    fn flush_queue(&mut self) -> Result<(), ()> {
+        // first free anything in the free queue
+        for i in 0..(self.free_queue_length) {
+            unsafe {
+                self.free(self.free_queue.get_unchecked(i as usize).assume_init())?;
+            }
+        }
+        self.free_queue_length = 0;
+
+        // then allocate anything that needs allocation in the alloc queue
+        for i in 0..(self.alloc_queue_length) {
+            unsafe {
+                self.allocate (
+                    self.alloc_queue.get_unchecked(i as usize).assume_init()
+                ).ok_or(());
+            }
+        }
+        self.free_queue_length = 0;
+
         Ok(())
     }
 
