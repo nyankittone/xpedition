@@ -183,13 +183,16 @@ impl<const S: usize> EntityPool<S> {
     }
 }
 
+pub type EntityID = u32;
+pub type EntityIterationCount = u32;
+
 pub struct EntityIterator<'a:, const S: usize> {
     pool: &'a RefCell<EntityPoolAllocation<S>>,
     i: u32,
 }
 
 impl<'a, const S: usize> Iterator for EntityIterator<'a, S> {
-    type Item = (u32, EntityIndirectAllocHandle<'a, S>);
+    type Item = (EntityID, EntityIndirectAllocHandle<'a, S>, EntityIterationCount);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i as usize >= S {
@@ -198,9 +201,10 @@ impl<'a, const S: usize> Iterator for EntityIterator<'a, S> {
 
         let handle = self.pool.borrow_mut();
         let returned = handle.fralloc_list[self.i as usize];
+        let count = self.i - handle.blocks_free;
         self.i += 1;
 
-        Some((returned, EntityIndirectAllocHandle(handle)))
+        Some((returned, EntityIndirectAllocHandle(handle), count))
     }
 }
 
@@ -209,16 +213,19 @@ pub struct SubEntityIterator<'a, const S: usize> {
     i: u32,
 }
 
-impl<'a, const S: usize> SubEntityIterator<'a, S> {
-    pub fn next(&mut self) -> Option<(u32, &'a EntityIndirectAllocHandle<'a, S>, u32)> {
+impl<'a, const S: usize> Iterator for SubEntityIterator<'a, S> {
+    type Item = (EntityID, EntityIterationCount);
+
+    fn next(&mut self) -> Option<Self::Item> {
         if self.i as usize >= S {
             return None;
         }
 
         let id = self.handle.0.fralloc_list[self.i as usize];
+        let count = self.i - self.handle.0.blocks_free;
         self.i += 1;
 
-        Some((id, &self.handle, self.i - self.handle.0.blocks_free))
+        Some((id, count))
     }
 }
 
@@ -248,11 +255,10 @@ pub fn start_physics() {
 
     drop(pool_handle);
 
-    for (i, (id, handle)) in pool.iter().enumerate() {
-        eprintln!("I am ID {}.\nAhead of me are IDs:", id);
+    for (id, handle, i) in pool.iter() {
+        eprintln!("I am ID {}, {i}.\nAhead of me are IDs:", id);
 
-        let mut sub_iterator = handle.sub_iter(i as u32);
-        while let Some((id, handle, _)) = sub_iterator.next() {
+        for (id, _) in handle.sub_iter(i) {
             eprintln!("{id}");
         }
 
