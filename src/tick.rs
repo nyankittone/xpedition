@@ -302,13 +302,13 @@ impl<'a, const S: usize, const Q: usize> Iterator for SubEntityIterator<'a, S, Q
     }
 }
 
-fn tick(pool: &EntityPool, delta_time: u64) {
+fn tick<const S: usize, const Q: usize>(pool: &EntityPool<S, Q>, delta_time: u64) {
     // iterate on each entity in the pool. Then flush the alloc and free buffers afterwards.
     for (id, handle, _) in pool.iter() {
-        let entity = handle.get_mut(id);
-        if let Some(Entity::Player(ref mut player)) = *entity {
+        let mut entity = handle.get_mut(id).unwrap();
+        if let Entity::Player(player) = &mut *entity {
             eprintln!("Player position is {:?}", player.position);
-            let modification = player.velocity * (delta_time as i32); // sus
+            let modification = player.velocity * (delta_time as i32);
             player.position += GameVector {x: modification.x as i64, y: modification.y as i64};
         }
     }
@@ -327,8 +327,8 @@ pub fn start_physics() {
     let player_id = handle.allocate(Entity::Player(Player::new())).unwrap();
 
     // Let's add a little bit of initial velocity to the player for testing purposes.
-    let player = handle.get_mut(player_id).unwrap();
-    if let Entity::Player(mut player) = *player {
+    let mut player = handle.get_mut(player_id).unwrap();
+    if let Entity::Player(player) = &mut *player {
         player.velocity.x += 128;
         player.velocity.y += 16;
     }
