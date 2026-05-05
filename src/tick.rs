@@ -1,5 +1,6 @@
 use core::{default::Default};
 use std::cell::{RefCell, RefMut, Ref};
+use std::mem::MaybeUninit;
 
 use crate::game_vector::GameVector;
 
@@ -45,13 +46,15 @@ pub enum Entity {
     Projectile(Projectile),
 }
 
-pub struct EntityPoolAllocation<const S: usize> {
+pub struct EntityPoolAllocation<const S: usize, const Q: usize> {
     blocks_free: u32,
     fralloc_list: [u32; S],
     entities: [Option<RefCell<Entity>>; S],
+    alloc_queue: [MaybeUninit<Entity>; Q],
+    free_queue: [MaybeUninit<Entity>; Q],
 }
 
-impl<const S: usize> EntityPoolAllocation<S> {
+impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
     fn allocate(&mut self, entity: Entity) -> Option<u32> {
         if self.blocks_free == 0 {
             return None;
@@ -107,8 +110,8 @@ pub trait EntityPoolHandle {
     fn get_mut(&self, id: u32) -> Option<RefMut<'_, Entity>>;
 }
 
-pub struct EntityDirectAllocHandle<'a, const S: usize>(RefMut<'a, EntityPoolAllocation<S>>);
-impl<'a, const S: usize> EntityPoolHandle for EntityDirectAllocHandle<'a, S> {
+pub struct EntityDirectAllocHandle<'a, const S: usize, const Q: usize>(RefMut<'a, EntityPoolAllocation<S, Q>>);
+impl<'a, const S: usize, const Q: usize> EntityPoolHandle for EntityDirectAllocHandle<'a, S, Q> {
     fn allocate(&mut self, entity: Entity) -> Option<u32> {
         self.0.allocate(entity)
     }
@@ -126,8 +129,8 @@ impl<'a, const S: usize> EntityPoolHandle for EntityDirectAllocHandle<'a, S> {
     }
 }
 
-pub struct EntityIndirectAllocHandle<'a, const S: usize>(RefMut<'a, EntityPoolAllocation<S>>);
-impl<'a, const S: usize> EntityPoolHandle for EntityIndirectAllocHandle<'a, S> {
+pub struct EntityIndirectAllocHandle<'a, const S: usize, const Q: usize>(RefMut<'a, EntityPoolAllocation<S, Q>>);
+impl<'a, const S: usize, const Q: usize> EntityPoolHandle for EntityIndirectAllocHandle<'a, S, Q> {
     fn allocate(&mut self, entity: Entity) -> Option<u32> {
         None
     }
@@ -145,8 +148,8 @@ impl<'a, const S: usize> EntityPoolHandle for EntityIndirectAllocHandle<'a, S> {
     }
 }
 
-impl<'a, const S: usize> EntityIndirectAllocHandle<'a, S> {
-    pub fn sub_iter(&'a self, progress: u32) -> SubEntityIterator<'a, S> {
+impl<'a, const S: usize, const Q: usize> EntityIndirectAllocHandle<'a, S, Q> {
+    pub fn sub_iter(&'a self, progress: u32) -> SubEntityIterator<'a, S, Q> {
         SubEntityIterator {
             handle: &self,
             i: self.0.blocks_free + progress + 1,
@@ -154,26 +157,28 @@ impl<'a, const S: usize> EntityIndirectAllocHandle<'a, S> {
     }
 }
 
-pub struct EntityPool<const S: usize> {
-    pool: Box<RefCell<EntityPoolAllocation<S>>>,
+pub struct EntityPool<const S: usize, const Q: usize> {
+    pool: Box<RefCell<EntityPoolAllocation<S, Q>>>,
 }
 
-impl<const S: usize> EntityPool<S> {
+impl<const S: usize, const Q: usize> EntityPool<S, Q> {
     pub fn new() -> Self {
         Self {
             pool: Box::new(RefCell::new(EntityPoolAllocation {
                 blocks_free: S as u32,
                 fralloc_list: std::array::from_fn(|i| (S - i - 1) as u32),
                 entities: [const{None}; S],
+                alloc_queue: [const{MaybeUninit::uninit()}; Q],
+                free_queue: [const{MaybeUninit::uninit()}; Q],
             },
         ))}
     }
 
-    pub fn get_handle(&self) -> EntityDirectAllocHandle<'_, S> {
+    pub fn get_handle(&self) -> EntityDirectAllocHandle<'_, S, Q> {
         EntityDirectAllocHandle(self.pool.borrow_mut())
     }
 
-    pub fn iter(&self) -> EntityIterator<'_, S> {
+    pub fn iter(&self) -> EntityIterator<'_, S, Q> {
         let i = self.pool.borrow().blocks_free;
 
         EntityIterator {
@@ -186,13 +191,13 @@ impl<const S: usize> EntityPool<S> {
 pub type EntityID = u32;
 pub type EntityIterationCount = u32;
 
-pub struct EntityIterator<'a:, const S: usize> {
-    pool: &'a RefCell<EntityPoolAllocation<S>>,
+pub struct EntityIterator<'a:, const S: usize, const Q: usize> {
+    pool: &'a RefCell<EntityPoolAllocation<S, Q>>,
     i: u32,
 }
 
-impl<'a, const S: usize> Iterator for EntityIterator<'a, S> {
-    type Item = (EntityID, EntityIndirectAllocHandle<'a, S>, EntityIterationCount);
+impl<'a, const S: usize, const Q: usize> Iterator for EntityIterator<'a, S, Q> {
+    type Item = (EntityID, EntityIndirectAllocHandle<'a, S, Q>, EntityIterationCount);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i as usize >= S {
@@ -208,12 +213,12 @@ impl<'a, const S: usize> Iterator for EntityIterator<'a, S> {
     }
 }
 
-pub struct SubEntityIterator<'a, const S: usize> {
-    handle: &'a EntityIndirectAllocHandle<'a, S>,
+pub struct SubEntityIterator<'a, const S: usize, const Q: usize> {
+    handle: &'a EntityIndirectAllocHandle<'a, S, Q>,
     i: u32,
 }
 
-impl<'a, const S: usize> Iterator for SubEntityIterator<'a, S> {
+impl<'a, const S: usize, const Q: usize> Iterator for SubEntityIterator<'a, S, Q> {
     type Item = (EntityID, EntityIterationCount);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -242,7 +247,7 @@ impl<'a, const S: usize> Iterator for SubEntityIterator<'a, S> {
 // immediately before a tick is finished.
 
 pub fn start_physics() {
-    let pool = EntityPool::<1024>::new();
+    let pool = EntityPool::<1024, 128>::new();
     let mut pool_handle = pool.get_handle();
     pool_handle.allocate(Entity::Player(Player {
         velocity: GameVector {
