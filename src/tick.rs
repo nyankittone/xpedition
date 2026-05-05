@@ -304,7 +304,6 @@ pub fn start_physics() {
         },
         ..Player::default()
     }));
-    pool_handle.allocate(Entity::Asteriod(Asteroid::default()));
 
     drop(pool_handle);
 
@@ -342,3 +341,4 @@ pub fn start_physics() {
     }
 }
 
+// TODO: Add unit tests. HA!
