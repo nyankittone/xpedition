@@ -312,6 +312,8 @@ fn tick<const S: usize, const Q: usize>(pool: &EntityPool<S, Q>, delta_time: u64
             player.position += GameVector {x: modification.x as i64, y: modification.y as i64};
         }
     }
+
+    let _ = pool.flush_queue();
 }
 
 pub fn start_physics() {
@@ -340,7 +342,7 @@ pub fn start_physics() {
     // running at 240 ticks/second max.
 
     let mut delta_time = 1000000 / 240;
-    const TICK_RATE: time::Duration = time::Duration::from_micros(1000000 / 60);
+    const TICK_RATE: time::Duration = time::Duration::from_micros(1000000 / 240);
 
     loop {
         let before_tick = time::Instant::now();
@@ -353,7 +355,7 @@ pub fn start_physics() {
         }
 
         delta_time = TICK_RATE.as_micros() as u64;
-        thread::sleep(elapsed);
+        thread::sleep(TICK_RATE - elapsed);
     }
 }
 
