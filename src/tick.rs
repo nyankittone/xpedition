@@ -137,10 +137,10 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
             unsafe {
                 self.allocate (
                     self.alloc_queue.get_unchecked(i as usize).assume_init()
-                ).ok_or(());
+                ).ok_or(())?;
             }
         }
-        self.free_queue_length = 0;
+        self.alloc_queue_length = 0;
 
         Ok(())
     }
