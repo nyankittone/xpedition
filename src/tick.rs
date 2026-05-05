@@ -33,7 +33,7 @@ pub struct Asteroid {
     points: [f32; 8],
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct Projectile {
     position: GameVector<i64>,
     velocity: GameVector<i32>,
@@ -127,7 +127,7 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
         // first free anything in the free queue
         for i in 0..(self.free_queue_length) {
             unsafe {
-                self.free(self.free_queue.get_unchecked(i as usize).assume_init())?;
+                self.free(self.free_queue.get_unchecked(i as usize).assume_init());
             }
         }
         self.free_queue_length = 0;
@@ -154,15 +154,8 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
     }
 }
 
-pub trait EntityPoolHandle {
-    fn allocate(&mut self, entity: Entity) -> Option<u32>;
-    fn free(&mut self, index: u32) -> Result<(), ()>;
-    fn get(&self, id: u32) -> Option<Ref<'_, Entity>>;
-    fn get_mut(&self, id: u32) -> Option<RefMut<'_, Entity>>;
-}
-
 pub struct EntityDirectAllocHandle<'a, const S: usize, const Q: usize>(RefMut<'a, EntityPoolAllocation<S, Q>>);
-impl<'a, const S: usize, const Q: usize> EntityPoolHandle for EntityDirectAllocHandle<'a, S, Q> {
+impl<'a, const S: usize, const Q: usize> EntityDirectAllocHandle<'a, S, Q> {
     fn allocate(&mut self, entity: Entity) -> Option<u32> {
         self.0.allocate(entity)
     }
@@ -181,13 +174,13 @@ impl<'a, const S: usize, const Q: usize> EntityPoolHandle for EntityDirectAllocH
 }
 
 pub struct EntityIndirectAllocHandle<'a, const S: usize, const Q: usize>(RefMut<'a, EntityPoolAllocation<S, Q>>);
-impl<'a, const S: usize, const Q: usize> EntityPoolHandle for EntityIndirectAllocHandle<'a, S, Q> {
-    fn allocate(&mut self, entity: Entity) -> Option<u32> {
-        None
+impl<'a, const S: usize, const Q: usize> EntityIndirectAllocHandle<'a, S, Q> {
+    fn allocate(&mut self, entity: Entity) -> Result<(), ()> {
+        self.0.queue_allocate(entity)
     }
 
     fn free(&mut self, index: u32) -> Result<(), ()> {
-        Err(())
+        self.0.queue_free(index)
     }
 
     fn get(&self, id: u32) -> Option<Ref<'_, Entity>> {
@@ -197,9 +190,7 @@ impl<'a, const S: usize, const Q: usize> EntityPoolHandle for EntityIndirectAllo
     fn get_mut(&self, id: u32) -> Option<RefMut<'_, Entity>> {
         self.0.get_mut(id)
     }
-}
 
-impl<'a, const S: usize, const Q: usize> EntityIndirectAllocHandle<'a, S, Q> {
     pub fn sub_iter(&'a self, progress: u32) -> SubEntityIterator<'a, S, Q> {
         SubEntityIterator {
             handle: &self,
@@ -220,13 +211,19 @@ impl<const S: usize, const Q: usize> EntityPool<S, Q> {
                 fralloc_list: std::array::from_fn(|i| (S - i - 1) as u32),
                 entities: [const{None}; S],
                 alloc_queue: [const{MaybeUninit::uninit()}; Q],
+                alloc_queue_length: 0,
                 free_queue: [const{MaybeUninit::uninit()}; Q],
+                free_queue_length: 0,
             },
         ))}
     }
 
     pub fn get_handle(&self) -> EntityDirectAllocHandle<'_, S, Q> {
         EntityDirectAllocHandle(self.pool.borrow_mut())
+    }
+
+    pub fn flush_queue(&self) -> Result<(), ()> {
+        self.pool.borrow_mut().flush_queue()
     }
 
     pub fn iter(&self) -> EntityIterator<'_, S, Q> {
@@ -309,6 +306,20 @@ pub fn start_physics() {
     }));
     pool_handle.allocate(Entity::Asteriod(Asteroid::default()));
 
+    drop(pool_handle);
+
+    for (_, mut handle, _) in pool.iter() {
+        for _ in 0..10 {
+            let _ = handle.allocate(Entity::Asteriod(Asteroid::default()));
+        }
+    }
+
+    let _ = pool.flush_queue();
+    let mut pool_handle = pool.get_handle();
+    let _ = pool_handle.free(3);
+    let _ = pool_handle.free(4);
+    pool_handle.allocate(Entity::Projectile(Projectile::default()));
+    pool_handle.allocate(Entity::Projectile(Projectile::default()));
     drop(pool_handle);
 
     for (id, handle, i) in pool.iter() {
