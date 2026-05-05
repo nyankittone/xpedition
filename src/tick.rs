@@ -145,6 +145,15 @@ impl<'a, const S: usize> EntityPoolHandle for EntityIndirectAllocHandle<'a, S> {
     }
 }
 
+impl<'a, const S: usize> EntityIndirectAllocHandle<'a, S> {
+    pub fn sub_iter(&'a self, progress: u32) -> SubEntityIterator<'a, S> {
+        SubEntityIterator {
+            handle: &self,
+            i: self.0.blocks_free + progress + 1,
+        }
+    }
+}
+
 pub struct EntityPool<const S: usize> {
     pool: Box<RefCell<EntityPoolAllocation<S>>>,
 }
@@ -195,6 +204,24 @@ impl<'a, const S: usize> Iterator for EntityIterator<'a, S> {
     }
 }
 
+pub struct SubEntityIterator<'a, const S: usize> {
+    handle: &'a EntityIndirectAllocHandle<'a, S>,
+    i: u32,
+}
+
+impl<'a, const S: usize> SubEntityIterator<'a, S> {
+    pub fn next(&mut self) -> Option<(u32, &'a EntityIndirectAllocHandle<'a, S>, u32)> {
+        if self.i as usize >= S {
+            return None;
+        }
+
+        let id = self.handle.0.fralloc_list[self.i as usize];
+        self.i += 1;
+
+        Some((id, &self.handle, self.i - self.handle.0.blocks_free))
+    }
+}
+
 // How will iterating over the allocated objects work?
 // The problem is that the entities allocated are free to allocate or free new entities as they
 // please, and this would happen while iterating. This could mess with the iterator itself in a
@@ -221,8 +248,13 @@ pub fn start_physics() {
 
     drop(pool_handle);
 
-    for (id, handle) in pool.iter() {
-        eprintln!("I am ID {}.", id);
+    for (i, (id, handle)) in pool.iter().enumerate() {
+        eprintln!("I am ID {}.\nAhead of me are IDs:", id);
+
+        let mut sub_iterator = handle.sub_iter(i as u32);
+        while let Some((id, handle, _)) = sub_iterator.next() {
+            eprintln!("{id}");
+        }
 
         let player = handle.get_mut(0);
         if let Some(mut player) = player {
