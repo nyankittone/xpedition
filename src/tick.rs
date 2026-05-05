@@ -1,5 +1,5 @@
 use core::{default::Default};
-use std::cell::{RefCell, RefMut};
+use std::cell::{RefCell, RefMut, Ref};
 
 use crate::game_vector::GameVector;
 
@@ -48,7 +48,7 @@ pub enum Entity {
 pub struct EntityPoolAllocation<const S: usize> {
     blocks_free: u32,
     fralloc_list: [u32; S],
-    entities: [Option<Entity>; S],
+    entities: [Option<RefCell<Entity>>; S],
 }
 
 impl<const S: usize> EntityPoolAllocation<S> {
@@ -59,7 +59,7 @@ impl<const S: usize> EntityPoolAllocation<S> {
 
         let returned = self.fralloc_list[self.blocks_free as usize - 1];
         let new_entity = self.entities.get_mut(returned as usize).unwrap();
-        *new_entity = Some(entity);
+        *new_entity = Some(RefCell::new(entity));
 
         self.blocks_free -= 1;
         Some(returned)
@@ -91,20 +91,20 @@ impl<const S: usize> EntityPoolAllocation<S> {
         Ok(())
     }
 
-    fn get(&self, id: u32) -> Option<&Entity> {
-        self.entities.get(id as usize).map_or(None, |thing| thing.as_ref())
+    fn get(&self, id: u32) -> Option<Ref<'_, Entity>> {
+        self.entities.get(id as usize)?.as_ref().map(|cell| cell.borrow())
     }
 
-    fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
-        self.entities.get_mut(id as usize).map_or(None, |thing| thing.as_mut())
+    fn get_mut(&self, id: u32) -> Option<RefMut<'_, Entity>> {
+        self.entities.get(id as usize)?.as_ref().map(|cell| cell.borrow_mut())
     }
 }
 
 pub trait EntityPoolHandle {
     fn allocate(&mut self, entity: Entity) -> Option<u32>;
     fn free(&mut self, index: u32) -> Result<(), ()>;
-    fn get(&self, id: u32) -> Option<&Entity>;
-    fn get_mut(&mut self, id: u32) -> Option<&mut Entity>;
+    fn get(&self, id: u32) -> Option<Ref<'_, Entity>>;
+    fn get_mut(&self, id: u32) -> Option<RefMut<'_, Entity>>;
 }
 
 pub struct EntityDirectAllocHandle<'a, const S: usize>(RefMut<'a, EntityPoolAllocation<S>>);
@@ -117,11 +117,11 @@ impl<'a, const S: usize> EntityPoolHandle for EntityDirectAllocHandle<'a, S> {
         self.0.free(index)
     }
 
-    fn get(&self, id: u32) -> Option<&Entity> {
+    fn get(&self, id: u32) -> Option<Ref<'_, Entity>> {
         self.0.get(id)
     }
 
-    fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
+    fn get_mut(&self, id: u32) -> Option<RefMut<'_, Entity>> {
         self.0.get_mut(id)
     }
 }
@@ -136,11 +136,11 @@ impl<'a, const S: usize> EntityPoolHandle for EntityIndirectAllocHandle<'a, S> {
         Err(())
     }
 
-    fn get(&self, id: u32) -> Option<&Entity> {
+    fn get(&self, id: u32) -> Option<Ref<'_, Entity>> {
         self.0.get(id)
     }
 
-    fn get_mut(&mut self, id: u32) -> Option<&mut Entity> {
+    fn get_mut(&self, id: u32) -> Option<RefMut<'_, Entity>> {
         self.0.get_mut(id)
     }
 }
@@ -226,9 +226,14 @@ pub fn start_physics() {
 
         let player = handle.get_mut(0);
         let thing = handle.get_mut(1);
-        if let Some(Entity::Player(player)) = player {
-            player.velocity += 1;
-            eprintln!("Player velocity is now: {:?}", player.velocity);
+        if let Some(mut player) = player {
+            match &mut *player {
+                Entity::Player(player) => {
+                    player.velocity += 1;
+                    eprintln!("Player velocity is now {:?}", player.velocity);
+                },
+                _ => (),
+            }
         }
     }
 }
