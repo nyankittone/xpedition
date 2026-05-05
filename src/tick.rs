@@ -221,11 +221,10 @@ pub fn start_physics() {
 
     drop(pool_handle);
 
-    for (id, mut handle) in pool.iter() {
+    for (id, handle) in pool.iter() {
         eprintln!("I am ID {}.", id);
 
         let player = handle.get_mut(0);
-        let thing = handle.get_mut(1);
         if let Some(mut player) = player {
             match &mut *player {
                 Entity::Player(player) => {
