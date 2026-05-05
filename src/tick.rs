@@ -2,22 +2,42 @@ use core::{default::Default};
 use std::cell::{RefCell, RefMut, Ref};
 use std::mem::MaybeUninit;
 use std::clone::Clone;
+use std::time;
+use std::thread;
 
 use crate::game_vector::GameVector;
 
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Player {
-    position: GameVector<i64>,
-    rotation: f32,
-    velocity: GameVector<i32>,
-    health_current: u32,
-    health_max: u32,
-    ammo_current: u32,
-    ammo_max: u32,
-    oxygen_current: u32,
-    oxygen_max: u32,
-    fuel_current: u32,
-    fuel_max: u32,
+    pub position: GameVector<i64>,
+    pub rotation: f32,
+    pub velocity: GameVector<i32>,
+    pub health_current: u32,
+    pub health_max: u32,
+    pub ammo_current: u32,
+    pub ammo_max: u32,
+    pub oxygen_current: u32,
+    pub oxygen_max: u32,
+    pub fuel_current: u32,
+    pub fuel_max: u32,
+}
+
+impl Player {
+    pub fn new() -> Self {
+        Self {
+            position: GameVector::new(0, 0),
+            rotation: 0.0,
+            velocity: GameVector::new(0, 0),
+            health_current: 100,
+            health_max: 100,
+            ammo_current: 0,
+            ammo_max: 0,
+            oxygen_current: 1000,
+            oxygen_max: 1000,
+            fuel_current: 1000,
+            fuel_max: 1000,
+        }
+    }
 }
 
 // Having GameVector derive default might be a really bad idea long-term, but this is temporary.
@@ -282,63 +302,59 @@ impl<'a, const S: usize, const Q: usize> Iterator for SubEntityIterator<'a, S, Q
     }
 }
 
-// How will iterating over the allocated objects work?
-// The problem is that the entities allocated are free to allocate or free new entities as they
-// please, and this would happen while iterating. This could mess with the iterator itself in a
-// not-so-desireable way.
-// Either we design our allocator and iterators so that allocations and deletions are iterator-aware
-// and will update any active iterators when they occur so that they'll not iterate on inactive
-// cells, etc... or we don't allocate and delete things right away, and instead stage them until
-// iteration is complete.
-// The latter strategy seems easier and more straight-forward to accompilish, at the cost of *maybe*
-// being less flexiable. There is probably not a good reason to need to run a brand new entity
-// immediately before a tick is finished.
-
-pub fn start_physics() {
-    let pool = EntityPool::<1024, 128>::new();
-    let mut pool_handle = pool.get_handle();
-    pool_handle.allocate(Entity::Player(Player {
-        velocity: GameVector {
-            x: 1,
-            y: 1,
-        },
-        ..Player::default()
-    }));
-
-    drop(pool_handle);
-
-    for (_, mut handle, _) in pool.iter() {
-        for _ in 0..10 {
-            let _ = handle.allocate(Entity::Asteriod(Asteroid::default()));
-        }
-    }
-
-    let _ = pool.flush_queue();
-    let mut pool_handle = pool.get_handle();
-    let _ = pool_handle.free(3);
-    let _ = pool_handle.free(4);
-    pool_handle.allocate(Entity::Projectile(Projectile::default()));
-    pool_handle.allocate(Entity::Projectile(Projectile::default()));
-    drop(pool_handle);
-
-    for (id, handle, i) in pool.iter() {
-        eprintln!("I am ID {}, {i}.\nAhead of me are IDs:", id);
-
-        for (id, _) in handle.sub_iter(i) {
-            eprintln!("{id}");
-        }
-
-        let player = handle.get_mut(0);
-        if let Some(mut player) = player {
-            match &mut *player {
-                Entity::Player(player) => {
-                    player.velocity += 1;
-                    eprintln!("Player velocity is now {:?}", player.velocity);
-                },
-                _ => (),
-            }
+fn tick(pool: &EntityPool, delta_time: u64) {
+    // iterate on each entity in the pool. Then flush the alloc and free buffers afterwards.
+    for (id, handle, _) in pool.iter() {
+        let entity = handle.get_mut(id);
+        if let Some(Entity::Player(ref mut player)) = *entity {
+            eprintln!("Player position is {:?}", player.position);
+            let modification = player.velocity * (delta_time as i32); // sus
+            player.position += GameVector {x: modification.x as i64, y: modification.y as i64};
         }
     }
 }
 
-// TODO: Add unit tests. HA!
+pub fn start_physics() {
+    let pool = EntityPool::<1337, 67>::new();
+
+    // Allocate any initial objects needed for the game to work. For now, that will just be the
+    // player. In the future, it'll also include planets or large asteroids with gravity.
+    // Should this function handle events of some kind? Or is that the responsibility of the ticking
+    // function?
+    // Run the ticking function in a loop forever.
+
+    let mut handle = pool.get_handle();
+    let player_id = handle.allocate(Entity::Player(Player::new())).unwrap();
+
+    // Let's add a little bit of initial velocity to the player for testing purposes.
+    let player = handle.get_mut(player_id).unwrap();
+    if let Entity::Player(mut player) = *player {
+        player.velocity.x += 128;
+        player.velocity.y += 16;
+    }
+
+    drop(player);
+    drop(handle);
+
+    // Run the ticking function, once every 60 ticks for now. Later I want to make it work well for
+    // running at 240 ticks/second max.
+
+    let mut delta_time = 1000000 / 240;
+    const TICK_RATE: time::Duration = time::Duration::from_micros(1000000 / 60);
+
+    loop {
+        let before_tick = time::Instant::now();
+        tick(&pool, delta_time);
+
+        let elapsed = before_tick.elapsed();
+        if elapsed > TICK_RATE {
+            delta_time = elapsed.as_micros() as u64;
+            continue;
+        }
+
+        delta_time = TICK_RATE.as_micros() as u64;
+        thread::sleep(elapsed);
+    }
+}
+
+// TODO: Add unit tests for the allocator. HA!
