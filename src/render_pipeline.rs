@@ -42,9 +42,10 @@ pub struct RenderInfo<const A: usize> {
     projectiles: [MaybeUninit<ProjectileRender>; A],
 }
 
+
 impl<const A: usize> RenderInfo<A> {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> ReadRenderInfo<A> {
+        ReadRenderInfo(Self {
             asteroid_layer_count: 0,
             projectile_layer_count: 0,
             start_time: 0, // idk if 0 makes sense on initialization...
@@ -52,9 +53,12 @@ impl<const A: usize> RenderInfo<A> {
             player: None,
             asteroids: [const { MaybeUninit::uninit() }; A],
             projectiles: [const { MaybeUninit::uninit() }; A],
-        }
+        })
     }
+}
 
+pub struct ReadRenderInfo<const A: usize>(RenderInfo<A>);
+impl<const A: usize> ReadRenderInfo<A> {
     pub fn set_player(
         &mut self,
         start_position: GameVector<u64>,
@@ -62,7 +66,7 @@ impl<const A: usize> RenderInfo<A> {
         start_rotation: f32,
         end_rotation: f32,
     ) {
-        self.player = Some(PlayerRender {
+        self.0.player = Some(PlayerRender {
             start_position,
             end_position,
             start_rotation,
@@ -71,7 +75,7 @@ impl<const A: usize> RenderInfo<A> {
     }
 
     pub fn unset_player(&mut self) {
-        self.player = None;
+        self.0.player = None;
     }
 
     pub fn add_asteroid(
@@ -82,18 +86,18 @@ impl<const A: usize> RenderInfo<A> {
         end_rotation: f32,
         variation: u32,
     ) -> Result<(), ()> {
-        if self.asteroid_layer_count as usize >= A {
+        if self.0.asteroid_layer_count as usize >= A {
             return Err(());
         }
 
-        self.asteroids[self.asteroid_layer_count as usize].write(AsteroidRender {
+        self.0.asteroids[self.0.asteroid_layer_count as usize].write(AsteroidRender {
             start_position,
             end_position,
             start_rotation,
             end_rotation,
             variation,
         });
-        self.asteroid_layer_count += 1;
+        self.0.asteroid_layer_count += 1;
         Ok(())
     }
 
@@ -102,15 +106,19 @@ impl<const A: usize> RenderInfo<A> {
         start_position: GameVector<u64>,
         end_position: GameVector<u64>,
     ) -> Result<(), ()> {
-        if self.projectile_layer_count as usize >= A {
+        if self.0.projectile_layer_count as usize >= A {
             return Err(());
         }
 
-        self.projectiles[self.projectile_layer_count as usize].write(ProjectileRender {
+        self.0.projectiles[self.0.projectile_layer_count as usize].write(ProjectileRender {
             start_position,
             end_position,
         });
-        self.projectile_layer_count += 1;
+        self.0.projectile_layer_count += 1;
         Ok(())
     }
 }
+
+pub struct WriteRenderInfo<const A: usize>(RenderInfo<A>);
+
+
