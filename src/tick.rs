@@ -1,71 +1,10 @@
-use core::{default::Default};
 use std::cell::{RefCell, RefMut, Ref};
 use std::mem::MaybeUninit;
-use std::clone::Clone;
 use std::time;
 use std::thread;
 
-use crate::game_vector::GameVector;
-
-#[derive(Debug, Copy, Clone)]
-pub struct Player {
-    pub position: GameVector<i64>,
-    pub rotation: f32,
-    pub velocity: GameVector<i32>,
-    pub health_current: u32,
-    pub health_max: u32,
-    pub ammo_current: u32,
-    pub ammo_max: u32,
-    pub oxygen_current: u32,
-    pub oxygen_max: u32,
-    pub fuel_current: u32,
-    pub fuel_max: u32,
-}
-
-impl Player {
-    pub fn new() -> Self {
-        Self {
-            position: GameVector::new(0, 0),
-            rotation: 0.0,
-            velocity: GameVector::new(0, 0),
-            health_current: 100,
-            health_max: 100,
-            ammo_current: 0,
-            ammo_max: 0,
-            oxygen_current: 1000,
-            oxygen_max: 1000,
-            fuel_current: 1000,
-            fuel_max: 1000,
-        }
-    }
-}
-
-// Having GameVector derive default might be a really bad idea long-term, but this is temporary.
-#[derive(Default, Debug, Copy, Clone)]
-pub struct Asteroid {
-    position: GameVector<i64>,
-    rotation: f32,
-    velocity: GameVector<i32>,
-    health_current: u16,
-    health_max: u16,
-    scale: f32,
-    points_count: u8,
-    points: [f32; 8],
-}
-
-#[derive(Default, Debug, Copy, Clone)]
-pub struct Projectile {
-    position: GameVector<i64>,
-    velocity: GameVector<i32>,
-    color: u32,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum Entity {
-    Player(Player),
-    Asteriod(Asteroid),
-    Projectile(Projectile),
-}
+use crate::entities::*;
+use crate::game_vector::*;
 
 pub struct EntityPoolAllocation<const S: usize, const Q: usize> {
     blocks_free: u32,
@@ -147,7 +86,7 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
         // first free anything in the free queue
         for i in 0..(self.free_queue_length) {
             unsafe {
-                self.free(self.free_queue.get_unchecked(i as usize).assume_init());
+                let _ = self.free(self.free_queue.get_unchecked(i as usize).assume_init());
             }
         }
         self.free_queue_length = 0;
@@ -315,7 +254,7 @@ fn tick<const S: usize, const Q: usize>(pool: &EntityPool<S, Q>, delta_time: u64
 
     let _ = pool.flush_queue();
 
-    // Add all items that should be rendered to the temporary rendering list.
+    // Add all items that should be rendered to the temporary rendering pipeline.
 }
 
 pub fn start_physics() {

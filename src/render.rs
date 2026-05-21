@@ -1,4 +1,5 @@
 extern crate x11rb;
+use crate::render::render_entities;
 
 use std::{time, thread};
 use std::fmt::{self, Display, Debug, Write as _};
