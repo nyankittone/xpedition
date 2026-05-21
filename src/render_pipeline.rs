@@ -117,6 +117,10 @@ impl<const A: usize> WriteRenderInfo<A> {
         self.0.projectile_layer_count += 1;
         Ok(())
     }
+
+    pub fn commit(self) -> ReadRenderInfo<A> {
+        ReadRenderInfo(self.0)
+    }
 }
 
 pub struct ReadRenderInfo<const A: usize>(RenderInfo<A>);
