@@ -7,3 +7,4 @@ pub mod render;
 pub mod tick;
 pub mod entities;
 pub mod render_entities;
+pub mod render_pipeline;
