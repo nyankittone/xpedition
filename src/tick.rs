@@ -302,7 +302,7 @@ impl<'a, const S: usize, const Q: usize> Iterator for SubEntityIterator<'a, S, Q
     }
 }
 
-fn tick<const S: usize, const Q: usize>(pool: &EntityPool<S, Q>, delta_time: u64) {
+fn tick<const S: usize, const Q: usize>(pool: &EntityPool<S, Q>, delta_time: u64, player_id: u32) {
     // iterate on each entity in the pool. Then flush the alloc and free buffers afterwards.
     for (id, handle, _) in pool.iter() {
         let mut entity = handle.get_mut(id).unwrap();
@@ -314,6 +314,8 @@ fn tick<const S: usize, const Q: usize>(pool: &EntityPool<S, Q>, delta_time: u64
     }
 
     let _ = pool.flush_queue();
+
+    // Add all items that should be rendered to the temporary rendering list.
 }
 
 pub fn start_physics() {
@@ -346,7 +348,7 @@ pub fn start_physics() {
 
     loop {
         let before_tick = time::Instant::now();
-        tick(&pool, delta_time);
+        tick(&pool, delta_time, player_id);
 
         let elapsed = before_tick.elapsed();
         if elapsed > TICK_RATE {
