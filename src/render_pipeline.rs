@@ -44,8 +44,8 @@ pub struct RenderInfo<const A: usize> {
 
 
 impl<const A: usize> RenderInfo<A> {
-    pub fn new() -> ReadRenderInfo<A> {
-        ReadRenderInfo(Self {
+    pub fn new() -> WriteRenderInfo<A> {
+        WriteRenderInfo(Self {
             asteroid_layer_count: 0,
             projectile_layer_count: 0,
             start_time: 0, // idk if 0 makes sense on initialization...
@@ -57,8 +57,8 @@ impl<const A: usize> RenderInfo<A> {
     }
 }
 
-pub struct ReadRenderInfo<const A: usize>(RenderInfo<A>);
-impl<const A: usize> ReadRenderInfo<A> {
+pub struct WriteRenderInfo<const A: usize>(RenderInfo<A>);
+impl<const A: usize> WriteRenderInfo<A> {
     pub fn set_player(
         &mut self,
         start_position: GameVector<u64>,
@@ -119,6 +119,5 @@ impl<const A: usize> ReadRenderInfo<A> {
     }
 }
 
-pub struct WriteRenderInfo<const A: usize>(RenderInfo<A>);
-
+pub struct ReadRenderInfo<const A: usize>(RenderInfo<A>);
 
