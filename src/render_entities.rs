@@ -57,7 +57,7 @@ impl RenderEntity {
         end_position: GameVector<u64>,
         layer: LayerID,
         entity_specific: EntitySpecific,
-    )  -> Self {
+    ) -> Self {
         Self {
             layer,
             start_position,
