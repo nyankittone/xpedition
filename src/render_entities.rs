@@ -14,6 +14,15 @@ pub enum LayerID {
 }
 
 #[derive(Copy, Clone)]
+pub enum EntitySpecific {
+    Player,
+    Asteroid {
+        variation: u32,
+    },
+    Projectile,
+}
+
+#[derive(Copy, Clone)]
 pub struct RenderEntity {
     layer: LayerID,
     start_position: GameVector<u64>,
@@ -21,7 +30,7 @@ pub struct RenderEntity {
     start_rotation: f64, // Rotation fields are not always used, e.g. projectiles don't really need
                          // a rotation to be drawn.
     end_rotation: f64,
-    sprite_id: u32, // This could change to be something more smart, like a function pointer, later.
+    entity_specific: EntitySpecific,
 }
 
 impl RenderEntity {
@@ -31,7 +40,7 @@ impl RenderEntity {
         start_rotation: f64,
         end_rotation: f64,
         layer: LayerID,
-        sprite_id: u32,
+        entity_specific: EntitySpecific,
     ) -> Self {
         Self {
             layer,
@@ -39,7 +48,7 @@ impl RenderEntity {
             end_position,
             start_rotation,
             end_rotation,
-            sprite_id,
+            entity_specific,
         }
     }
 
@@ -47,7 +56,7 @@ impl RenderEntity {
         start_position: GameVector<u64>,
         end_position: GameVector<u64>,
         layer: LayerID,
-        sprite_id: u32,
+        entity_specific: EntitySpecific,
     )  -> Self {
         Self {
             layer,
@@ -55,7 +64,8 @@ impl RenderEntity {
             end_position,
             start_rotation: 0.0,
             end_rotation: 0.0,
-            sprite_id,
+            entity_specific,
         }
     }
 }
+
