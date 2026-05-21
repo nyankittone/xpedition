@@ -164,3 +164,23 @@ impl<'a, const A: usize, const P: usize> Iterator for ProjectileRenderIter<'a, A
     }
 }
 
+impl<const A: usize, const P: usize> ReadRenderInfo<A, P> {
+    pub const fn iter_asteroids(&self) -> AsteroidRenderIter<'_, A, P> {
+        AsteroidRenderIter {
+            render_info: self,
+            i: 0,
+        }
+    }
+
+    pub const fn iter_projectiles(&self) -> ProjectileRenderIter<'_, A, P> {
+        ProjectileRenderIter {
+            render_info: self,
+            i: 0,
+        }
+    }
+
+    pub const fn get_player(&self) -> Option<&PlayerRender> {
+        self.0.player.as_ref()
+    }
+}
+
