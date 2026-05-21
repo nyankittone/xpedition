@@ -28,7 +28,7 @@ pub struct ProjectileRender {
 // * Asteroid
 // * Gravity Body
 
-pub struct RenderInfo<const A: usize> {
+pub struct RenderInfo<const A: usize, const P: usize> {
     asteroid_layer_count: u32,
     projectile_layer_count: u32,
     start_time: u64,
@@ -36,10 +36,10 @@ pub struct RenderInfo<const A: usize> {
 
     player: Option<PlayerRender>,
     asteroids: [MaybeUninit<AsteroidRender>; A],
-    projectiles: [MaybeUninit<ProjectileRender>; A],
+    projectiles: [MaybeUninit<ProjectileRender>; P],
 }
 
-impl<const A: usize> RenderInfo<A> {
+impl<const A: usize, const P: usize> RenderInfo<A, P> {
     pub fn new() -> WriteRenderInfo<A> {
         WriteRenderInfo(Self {
             asteroid_layer_count: 0,
@@ -48,13 +48,13 @@ impl<const A: usize> RenderInfo<A> {
             delta_time: 0, // idk if 0 makes sense on initialization...
             player: None,
             asteroids: [const { MaybeUninit::uninit() }; A],
-            projectiles: [const { MaybeUninit::uninit() }; A],
+            projectiles: [const { MaybeUninit::uninit() }; P],
         })
     }
 }
 
-pub struct WriteRenderInfo<const A: usize>(RenderInfo<A>);
-impl<const A: usize> WriteRenderInfo<A> {
+pub struct WriteRenderInfo<const A: usize, const P: usize>(RenderInfo<A, P>);
+impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
     pub fn set_player(
         &mut self,
         start_position: GameVector<u64>,
@@ -114,10 +114,10 @@ impl<const A: usize> WriteRenderInfo<A> {
         Ok(())
     }
 
-    pub fn commit(self) -> ReadRenderInfo<A> {
+    pub fn commit(self) -> ReadRenderInfo<A, P> {
         ReadRenderInfo(self.0)
     }
 }
 
-pub struct ReadRenderInfo<const A: usize>(RenderInfo<A>);
+pub struct ReadRenderInfo<const A: usize, const P: usize>(RenderInfo<A, P>);
 
