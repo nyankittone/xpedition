@@ -22,9 +22,6 @@ pub struct ProjectileRender {
     pub end_position: GameVector<u64>,
 }
 
-const ASTEROID_LAYER_MAX: usize = 196;
-const PROJECTILE_LAYER_MAX: usize = 420;
-
 // Ordering of layers (from most in-front to most behind):
 // * Projectile
 // * Player
@@ -41,7 +38,6 @@ pub struct RenderInfo<const A: usize> {
     asteroids: [MaybeUninit<AsteroidRender>; A],
     projectiles: [MaybeUninit<ProjectileRender>; A],
 }
-
 
 impl<const A: usize> RenderInfo<A> {
     pub fn new() -> WriteRenderInfo<A> {
