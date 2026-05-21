@@ -17,6 +17,11 @@ pub struct PlayerRender {
     pub end_rotation: f32,
 }
 
+pub struct ProjectileRender {
+    pub start_position: GameVector<u64>,
+    pub end_position: GameVector<u64>,
+}
+
 const ASTEROID_LAYER_MAX: usize = 196;
 const PROJECTILE_LAYER_MAX: usize = 420;
 
@@ -34,6 +39,7 @@ pub struct RenderInfo<const A: usize> {
 
     player: Option<PlayerRender>,
     asteroids: [MaybeUninit<AsteroidRender>; A],
+    projectiles: [MaybeUninit<ProjectileRender>; A],
 }
 
 impl<const A: usize> RenderInfo<A> {
@@ -45,6 +51,7 @@ impl<const A: usize> RenderInfo<A> {
             delta_time: 0, // idk if 0 makes sense on initialization...
             player: None,
             asteroids: [const { MaybeUninit::uninit() }; A],
+            projectiles: [const { MaybeUninit::uninit() }; A],
         }
     }
 
@@ -87,6 +94,23 @@ impl<const A: usize> RenderInfo<A> {
             variation,
         });
         self.asteroid_layer_count += 1;
+        Ok(())
+    }
+
+    pub fn add_projectile(
+        &mut self,
+        start_position: GameVector<u64>,
+        end_position: GameVector<u64>,
+    ) -> Result<(), ()> {
+        if self.projectile_layer_count as usize >= A {
+            return Err(());
+        }
+
+        self.projectiles[self.projectile_layer_count as usize].write(ProjectileRender {
+            start_position,
+            end_position,
+        });
+        self.projectile_layer_count += 1;
         Ok(())
     }
 }
