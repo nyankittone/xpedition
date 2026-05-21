@@ -142,3 +142,25 @@ impl<'a, const A: usize, const P: usize> Iterator for AsteroidRenderIter<'a, A, 
     }
 }
 
+pub struct ProjectileRenderIter<'a, const A: usize, const P: usize> {
+    render_info: &'a ReadRenderInfo<A, P>,
+    i: u32,
+}
+
+impl<'a, const A: usize, const P: usize> Iterator for ProjectileRenderIter<'a, A, P> {
+    type Item = &'a ProjectileRender;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i >= self.render_info.0.projectile_layer_count {
+            return None;
+        }
+
+        let returned = unsafe {
+            self.render_info.0.projectiles.get_unchecked(self.i as usize).assume_init_ref()
+        };
+
+        self.i += 1;
+        Some(returned)
+    }
+}
+
