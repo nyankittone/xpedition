@@ -120,4 +120,25 @@ impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
 }
 
 pub struct ReadRenderInfo<const A: usize, const P: usize>(RenderInfo<A, P>);
+pub struct AsteroidRenderIter<'a, const A: usize, const P: usize> {
+    render_info: &'a ReadRenderInfo<A, P>,
+    i: u32,
+}
+
+impl<'a, const A: usize, const P: usize> Iterator for AsteroidRenderIter<'a, A, P> {
+    type Item = &'a AsteroidRender;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i >= self.render_info.0.asteroid_layer_count {
+            return None;
+        }
+
+        let returned = unsafe {
+            self.render_info.0.asteroids.get_unchecked(self.i as usize).assume_init_ref()
+        };
+
+        self.i += 1;
+        Some(returned)
+    }
+}
 
