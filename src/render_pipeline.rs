@@ -59,9 +59,7 @@ impl<const A: usize, const P: usize> Clone for RenderInfo<A, P> {
     fn clone(&self) -> Self {
         let mut returned = MaybeUninit::<Self>::uninit();
         unsafe {
-            println!("{}", std::mem::size_of::<RenderInfo<A, P>>());
             std::ptr::copy(self as *const Self, returned.as_mut_ptr(), 1);
-            println!("what???");
             returned.assume_init()
         }
     }
