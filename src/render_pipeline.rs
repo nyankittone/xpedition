@@ -40,8 +40,8 @@ pub struct RenderInfo<const A: usize, const P: usize> {
 }
 
 impl<const A: usize, const P: usize> RenderInfo<A, P> {
-    pub fn new() -> WriteRenderInfo<A> {
-        WriteRenderInfo(Self {
+    pub fn new() -> Self {
+        Self {
             asteroid_layer_count: 0,
             projectile_layer_count: 0,
             start_time: 0, // idk if 0 makes sense on initialization...
@@ -49,12 +49,16 @@ impl<const A: usize, const P: usize> RenderInfo<A, P> {
             player: None,
             asteroids: [const { MaybeUninit::uninit() }; A],
             projectiles: [const { MaybeUninit::uninit() }; P],
-        })
+        }
     }
 }
 
 pub struct WriteRenderInfo<const A: usize, const P: usize>(RenderInfo<A, P>);
 impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
+    pub fn new() -> Self {
+        Self(RenderInfo::new())
+    }
+
     pub fn set_player(
         &mut self,
         start_position: GameVector<u64>,
@@ -165,6 +169,10 @@ impl<'a, const A: usize, const P: usize> Iterator for ProjectileRenderIter<'a, A
 }
 
 impl<const A: usize, const P: usize> ReadRenderInfo<A, P> {
+    pub fn new() -> Self {
+        Self(RenderInfo::new())
+    }
+
     pub const fn iter_asteroids(&self) -> AsteroidRenderIter<'_, A, P> {
         AsteroidRenderIter {
             render_info: self,
