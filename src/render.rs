@@ -400,10 +400,10 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             };
 
             debug_text_buffer.clear();
-            let _ = write!(debug_text_buffer, "pos: {:?}", head_position);
+            let _ = write!(debug_text_buffer, "old: {:?}", pipeline_copy.get_player().unwrap().start_position);
             self.display.image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
             debug_text_buffer.clear();
-            let _ = write!(debug_text_buffer, "vel: {:?}", head_velocity);
+            let _ = write!(debug_text_buffer, "new: {:?}", pipeline_copy.get_player().unwrap().end_position);
             self.display.image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
 
             self.display.poly_line (
