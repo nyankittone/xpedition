@@ -308,13 +308,13 @@ pub fn start_physics<const A: usize, const P: usize>(
     let player_id = handle.allocate(Entity::Player(Player::new())).unwrap();
 
     // Let's add a little bit of initial velocity to the player for testing purposes.
-    let mut player = handle.get_mut(player_id).unwrap();
-    if let Entity::Player(player) = &mut *player {
-        player.velocity.x += 128;
-        player.velocity.y += 16;
-    }
-
-    drop(player);
+    // let mut player = handle.get_mut(player_id).unwrap();
+    // if let Entity::Player(player) = &mut *player {
+    //     player.velocity.x += 128;
+    //     player.velocity.y += 16;
+    // }
+    //
+    // drop(player);
     drop(handle);
 
     // Run the ticking function, once every 60 ticks for now. Later I want to make it work well for
