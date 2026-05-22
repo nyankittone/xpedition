@@ -60,7 +60,7 @@ pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
 
     let mut error_from_scope: Option<render::XError> = None;
     thread::scope(|scope| {
-        scope.spawn(|| tick::start_physics(&render_pipeline));
+        let handle = scope.spawn(|| tick::start_physics(&render_pipeline));
 
         let (mut renderer, keysymmer) = match render::DisplayState::new(args) {
             Ok(stuff) => stuff,
@@ -74,6 +74,8 @@ pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
             error_from_scope = Some(error);
             return;
         }
+
+        handle.join().unwrap();
     });
 
     error_from_scope.map_or_else(|| Ok(()), |error| Err(error))
