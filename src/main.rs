@@ -1,5 +1,6 @@
 use std::io::Write as _;
 use std::{process, time};
+use std::sync;
 
 use xpedition::*;
 use notify_rust::Notification;
@@ -53,7 +54,8 @@ fn oopsie(error: render::XError) -> ! {
 // this over time)
 
 pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
-    tick::start_physics();
+    let mut render_pipeline = sync::Mutex::new(render_pipeline::ReadRenderInfo::<128, 512>::new());
+    tick::start_physics(&render_pipeline);
 
     let (mut renderer, keysymmer) = render::DisplayState::new(args)?;
     renderer.run(&keysymmer)?;

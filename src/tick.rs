@@ -2,9 +2,11 @@ use std::cell::{RefCell, RefMut, Ref};
 use std::mem::MaybeUninit;
 use std::time;
 use std::thread;
+use std::sync;
 
 use crate::entities::*;
 use crate::game_vector::*;
+use crate::render_pipeline as rp;
 
 pub struct EntityPoolAllocation<const S: usize, const Q: usize> {
     blocks_free: u32,
@@ -257,7 +259,7 @@ fn tick<const S: usize, const Q: usize>(pool: &EntityPool<S, Q>, delta_time: u64
     // Add all items that should be rendered to the temporary rendering pipeline.
 }
 
-pub fn start_physics() {
+pub fn start_physics(render_pipeline: &sync::Mutex<rp::ReadRenderInfo<128, 512>>) {
     let pool = EntityPool::<1337, 67>::new();
 
     // Allocate any initial objects needed for the game to work. For now, that will just be the
