@@ -273,8 +273,6 @@ fn tick<const S: usize, const Q: usize, const A: usize, const P: usize>(
     for (id, handle, _) in pool.iter() {
         let mut entity = handle.get_mut(id).unwrap();
         if let Entity::Player(player) = &mut *entity {
-            eprintln!("Player position is {:?}", player.position);
-
             let old_position = player.position;
 
             let modification = player.velocity * (delta_time as i32);
