@@ -406,13 +406,6 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             let _ = write!(debug_text_buffer, "new: {:?}", pipeline_copy.get_player().unwrap().end_position);
             self.display.image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
 
-            // self.display.poly_line (
-            //     CoordMode::ORIGIN,
-            //     self.window,
-            //     self.gc,
-            //     &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
-            // )?;
-
             self.display.poly_fill_rectangle(self.window, self.gc, &[Rectangle {
                 x: (pipeline_copy.get_player().unwrap().end_position.x / 1000000) as i16,
                 y: (pipeline_copy.get_player().unwrap().end_position.y / 1000000) as i16,
