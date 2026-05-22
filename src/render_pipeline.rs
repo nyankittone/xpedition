@@ -3,23 +3,23 @@ use crate::render_entities;
 use std::mem::MaybeUninit;
 
 pub struct AsteroidRender {
-    pub start_position: GameVector<u64>,
-    pub end_position: GameVector<u64>,
+    pub start_position: GameVector<i64>,
+    pub end_position: GameVector<i64>,
     pub start_rotation: f32,
     pub end_rotation: f32,
     pub variation: u32,
 }
 
 pub struct PlayerRender {
-    pub start_position: GameVector<u64>,
-    pub end_position: GameVector<u64>,
+    pub start_position: GameVector<i64>,
+    pub end_position: GameVector<i64>,
     pub start_rotation: f32,
     pub end_rotation: f32,
 }
 
 pub struct ProjectileRender {
-    pub start_position: GameVector<u64>,
-    pub end_position: GameVector<u64>,
+    pub start_position: GameVector<i64>,
+    pub end_position: GameVector<i64>,
 }
 
 // Ordering of layers (from most in-front to most behind):
@@ -61,8 +61,8 @@ impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
 
     pub fn set_player(
         &mut self,
-        start_position: GameVector<u64>,
-        end_position: GameVector<u64>,
+        start_position: GameVector<i64>,
+        end_position: GameVector<i64>,
         start_rotation: f32,
         end_rotation: f32,
     ) {
@@ -80,8 +80,8 @@ impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
 
     pub fn add_asteroid(
         &mut self,
-        start_position: GameVector<u64>,
-        end_position: GameVector<u64>,
+        start_position: GameVector<i64>,
+        end_position: GameVector<i64>,
         start_rotation: f32,
         end_rotation: f32,
         variation: u32,
@@ -103,8 +103,8 @@ impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
 
     pub fn add_projectile(
         &mut self,
-        start_position: GameVector<u64>,
-        end_position: GameVector<u64>,
+        start_position: GameVector<i64>,
+        end_position: GameVector<i64>,
     ) -> Result<(), ()> {
         if self.0.projectile_layer_count as usize >= A {
             return Err(());

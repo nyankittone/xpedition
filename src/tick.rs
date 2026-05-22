@@ -267,20 +267,32 @@ fn tick<const S: usize, const Q: usize, const A: usize, const P: usize>(
     delta_time: u64,
     player_id: u32,
 ) {
+    let mut proto_pipeline = rp::WriteRenderInfo::<A, P>::new();
+
     // iterate on each entity in the pool. Then flush the alloc and free buffers afterwards.
     for (id, handle, _) in pool.iter() {
         let mut entity = handle.get_mut(id).unwrap();
         if let Entity::Player(player) = &mut *entity {
             eprintln!("Player position is {:?}", player.position);
+
+            let old_position = player.position;
+
             let modification = player.velocity * (delta_time as i32);
             player.position += GameVector {
                 x: modification.x as i64,
                 y: modification.y as i64,
             };
+
+            proto_pipeline.set_player(old_position, player.position, 0.0, 0.0);
         }
     }
 
     let _ = pool.flush_queue();
+    
+    // push the worked-on pipeline so the renderer can now use it
+    let mut pipeline_handle = render_pipeline.lock().expect("Pipeline fucking died!!!!!!");
+    *pipeline_handle = proto_pipeline.commit();
+    drop(pipeline_handle);
 }
 
 pub fn start_physics<const A: usize, const P: usize>(
