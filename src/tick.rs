@@ -1,8 +1,8 @@
-use std::cell::{RefCell, RefMut, Ref};
+use std::cell::{Ref, RefCell, RefMut};
 use std::mem::MaybeUninit;
-use std::time;
-use std::thread;
 use std::sync;
+use std::thread;
+use std::time;
 
 use crate::entities::*;
 use crate::game_vector::*;
@@ -46,8 +46,9 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
             let Some((found_index, _)) = allocated_indices
                 .iter()
                 .enumerate()
-                .find(|(_, e)| **e == index) else {
-                    return Err(());
+                .find(|(_, e)| **e == index)
+            else {
+                return Err(());
             };
 
             allocated_indices[..=found_index].rotate_right(1);
@@ -64,7 +65,9 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
         }
 
         unsafe {
-            self.alloc_queue.get_unchecked_mut(self.alloc_queue_length as usize).write(entity);
+            self.alloc_queue
+                .get_unchecked_mut(self.alloc_queue_length as usize)
+                .write(entity);
         }
         self.alloc_queue_length += 1;
 
@@ -77,7 +80,9 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
         }
 
         unsafe {
-            self.free_queue.get_unchecked_mut(self.free_queue_length as usize).write(id);
+            self.free_queue
+                .get_unchecked_mut(self.free_queue_length as usize)
+                .write(id);
         }
         self.free_queue_length += 1;
 
@@ -96,9 +101,8 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
         // then allocate anything that needs allocation in the alloc queue
         for i in 0..(self.alloc_queue_length) {
             unsafe {
-                self.allocate (
-                    self.alloc_queue.get_unchecked(i as usize).assume_init()
-                ).ok_or(())?;
+                self.allocate(self.alloc_queue.get_unchecked(i as usize).assume_init())
+                    .ok_or(())?;
             }
         }
         self.alloc_queue_length = 0;
@@ -107,15 +111,23 @@ impl<const S: usize, const Q: usize> EntityPoolAllocation<S, Q> {
     }
 
     fn get(&self, id: u32) -> Option<Ref<'_, Entity>> {
-        self.entities.get(id as usize)?.as_ref().map(|cell| cell.borrow())
+        self.entities
+            .get(id as usize)?
+            .as_ref()
+            .map(|cell| cell.borrow())
     }
 
     fn get_mut(&self, id: u32) -> Option<RefMut<'_, Entity>> {
-        self.entities.get(id as usize)?.as_ref().map(|cell| cell.borrow_mut())
+        self.entities
+            .get(id as usize)?
+            .as_ref()
+            .map(|cell| cell.borrow_mut())
     }
 }
 
-pub struct EntityDirectAllocHandle<'a, const S: usize, const Q: usize>(RefMut<'a, EntityPoolAllocation<S, Q>>);
+pub struct EntityDirectAllocHandle<'a, const S: usize, const Q: usize>(
+    RefMut<'a, EntityPoolAllocation<S, Q>>,
+);
 impl<'a, const S: usize, const Q: usize> EntityDirectAllocHandle<'a, S, Q> {
     fn allocate(&mut self, entity: Entity) -> Option<u32> {
         self.0.allocate(entity)
@@ -134,7 +146,9 @@ impl<'a, const S: usize, const Q: usize> EntityDirectAllocHandle<'a, S, Q> {
     }
 }
 
-pub struct EntityIndirectAllocHandle<'a, const S: usize, const Q: usize>(RefMut<'a, EntityPoolAllocation<S, Q>>);
+pub struct EntityIndirectAllocHandle<'a, const S: usize, const Q: usize>(
+    RefMut<'a, EntityPoolAllocation<S, Q>>,
+);
 impl<'a, const S: usize, const Q: usize> EntityIndirectAllocHandle<'a, S, Q> {
     fn allocate(&mut self, entity: Entity) -> Result<(), ()> {
         self.0.queue_allocate(entity)
@@ -170,13 +184,13 @@ impl<const S: usize, const Q: usize> EntityPool<S, Q> {
             pool: Box::new(RefCell::new(EntityPoolAllocation {
                 blocks_free: S as u32,
                 fralloc_list: std::array::from_fn(|i| (S - i - 1) as u32),
-                entities: [const{None}; S],
-                alloc_queue: [const{MaybeUninit::uninit()}; Q],
+                entities: [const { None }; S],
+                alloc_queue: [const { MaybeUninit::uninit() }; Q],
                 alloc_queue_length: 0,
-                free_queue: [const{MaybeUninit::uninit()}; Q],
+                free_queue: [const { MaybeUninit::uninit() }; Q],
                 free_queue_length: 0,
-            },
-        ))}
+            })),
+        }
     }
 
     pub fn get_handle(&self) -> EntityDirectAllocHandle<'_, S, Q> {
@@ -200,13 +214,17 @@ impl<const S: usize, const Q: usize> EntityPool<S, Q> {
 pub type EntityID = u32;
 pub type EntityIterationCount = u32;
 
-pub struct EntityIterator<'a:, const S: usize, const Q: usize> {
+pub struct EntityIterator<'a, const S: usize, const Q: usize> {
     pool: &'a RefCell<EntityPoolAllocation<S, Q>>,
     i: u32,
 }
 
 impl<'a, const S: usize, const Q: usize> Iterator for EntityIterator<'a, S, Q> {
-    type Item = (EntityID, EntityIndirectAllocHandle<'a, S, Q>, EntityIterationCount);
+    type Item = (
+        EntityID,
+        EntityIndirectAllocHandle<'a, S, Q>,
+        EntityIterationCount,
+    );
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i as usize >= S {
@@ -243,23 +261,31 @@ impl<'a, const S: usize, const Q: usize> Iterator for SubEntityIterator<'a, S, Q
     }
 }
 
-fn tick<const S: usize, const Q: usize>(pool: &EntityPool<S, Q>, delta_time: u64, player_id: u32) {
+fn tick<const S: usize, const Q: usize, const A: usize, const P: usize>(
+    pool: &EntityPool<S, Q>,
+    render_pipeline: &sync::Mutex<rp::ReadRenderInfo<A, P>>,
+    delta_time: u64,
+    player_id: u32,
+) {
     // iterate on each entity in the pool. Then flush the alloc and free buffers afterwards.
     for (id, handle, _) in pool.iter() {
         let mut entity = handle.get_mut(id).unwrap();
         if let Entity::Player(player) = &mut *entity {
             eprintln!("Player position is {:?}", player.position);
             let modification = player.velocity * (delta_time as i32);
-            player.position += GameVector {x: modification.x as i64, y: modification.y as i64};
+            player.position += GameVector {
+                x: modification.x as i64,
+                y: modification.y as i64,
+            };
         }
     }
 
     let _ = pool.flush_queue();
-
-    // Add all items that should be rendered to the temporary rendering pipeline.
 }
 
-pub fn start_physics(render_pipeline: &sync::Mutex<rp::ReadRenderInfo<128, 512>>) {
+pub fn start_physics<const A: usize, const P: usize>(
+    render_pipeline: &sync::Mutex<rp::ReadRenderInfo<A, P>>,
+) {
     let pool = EntityPool::<1337, 67>::new();
 
     // Allocate any initial objects needed for the game to work. For now, that will just be the
@@ -289,7 +315,7 @@ pub fn start_physics(render_pipeline: &sync::Mutex<rp::ReadRenderInfo<128, 512>>
 
     loop {
         let before_tick = time::Instant::now();
-        tick(&pool, delta_time, player_id);
+        tick(&pool, render_pipeline, delta_time, player_id);
 
         let elapsed = before_tick.elapsed();
         if elapsed > TICK_RATE {

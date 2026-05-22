@@ -54,7 +54,10 @@ fn oopsie(error: render::XError) -> ! {
 // this over time)
 
 pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
-    let mut render_pipeline = sync::Mutex::new(render_pipeline::ReadRenderInfo::<128, 512>::new());
+    const ASTEROID_RENDER_MAX: usize = 128;
+    const PROJECTILE_RENDER_MAX: usize = 512;
+
+    let mut render_pipeline = sync::Mutex::new(render_pipeline::ReadRenderInfo::<ASTEROID_RENDER_MAX, PROJECTILE_RENDER_MAX>::new());
     tick::start_physics(&render_pipeline);
 
     let (mut renderer, keysymmer) = render::DisplayState::new(args)?;
