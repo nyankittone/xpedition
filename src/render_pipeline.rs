@@ -40,7 +40,7 @@ pub struct RenderInfo<const A: usize, const P: usize> {
 }
 
 impl<const A: usize, const P: usize> RenderInfo<A, P> {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             asteroid_layer_count: 0,
             projectile_layer_count: 0,
