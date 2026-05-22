@@ -1,6 +1,7 @@
 use crate::game_vector::*;
 use crate::render_entities;
 use std::mem::MaybeUninit;
+use std::clone::Clone;
 
 pub struct AsteroidRender {
     pub start_position: GameVector<i64>,
@@ -10,6 +11,7 @@ pub struct AsteroidRender {
     pub variation: u32,
 }
 
+#[derive(Clone)]
 pub struct PlayerRender {
     pub start_position: GameVector<i64>,
     pub end_position: GameVector<i64>,
@@ -49,6 +51,16 @@ impl<const A: usize, const P: usize> RenderInfo<A, P> {
             player: None,
             asteroids: [const { MaybeUninit::uninit() }; A],
             projectiles: [const { MaybeUninit::uninit() }; P],
+        }
+    }
+}
+
+impl<const A: usize, const P: usize> Clone for RenderInfo<A, P> {
+    fn clone(&self) -> Self {
+        let mut returned = MaybeUninit::<Self>::uninit();
+        unsafe {
+            std::ptr::copy(self as *const Self, returned.as_mut_ptr(), std::mem::size_of::<Self>());
+            returned.assume_init()
         }
     }
 }
@@ -123,6 +135,7 @@ impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
     }
 }
 
+#[derive(Clone)]
 pub struct ReadRenderInfo<const A: usize, const P: usize>(RenderInfo<A, P>);
 pub struct AsteroidRenderIter<'a, const A: usize, const P: usize> {
     render_info: &'a ReadRenderInfo<A, P>,

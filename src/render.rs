@@ -3,6 +3,7 @@ use crate::render::render_entities;
 
 use std::{time, thread};
 use std::fmt::{self, Display, Debug, Write as _};
+use std::sync;
 
 use x11rb::connection::Connection;
 use x11rb::cookie::Cookie;
@@ -242,8 +243,9 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     Ok(false)
 }
 
-pub struct DisplayState {
+pub struct DisplayState<'a, const A: usize, const P: usize> {
     display: RustConnection,
+    pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>,
     gc: u32,
     font: u32,
     window: u32,
@@ -257,8 +259,8 @@ const MID_X: i32 = WIDTH as i32 / 2;
 const MID_Y: i32 = HEIGHT as i32 / 2;
 const SCALE_FACTOR: i32 = 8;
 
-impl DisplayState {
-    pub fn new(args: &Args) -> Result<(Self, Keysymmer), XError> {
+impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
+    pub fn new(args: &Args, pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>) -> Result<(Self, Keysymmer), XError> {
         let (display, screen) = x11rb::connect(None)?;
         let screen = &display.setup().roots[screen];
 
@@ -341,6 +343,7 @@ impl DisplayState {
 
         Ok((Self {
             display,
+            pipeline,
             gc,
             font,
             window,
@@ -390,6 +393,11 @@ impl DisplayState {
             }
 
             self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
+            
+            let pipeline_copy = {
+                let handle = self.pipeline.lock().expect("FUCK FUCKING SHIT MY PIPE IS BROKEN AAA");
+                handle.clone()
+            };
 
             debug_text_buffer.clear();
             let _ = write!(debug_text_buffer, "pos: {:?}", head_position);

@@ -62,11 +62,11 @@ pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
     thread::scope(|scope| {
         let handle = scope.spawn(|| tick::start_physics(&render_pipeline));
 
-        let (mut renderer, keysymmer) = match render::DisplayState::new(args) {
+        let (mut renderer, keysymmer) = match render::DisplayState::new(args, &render_pipeline) {
             Ok(stuff) => stuff,
             Err(error) => {
                 error_from_scope = Some(error);
-                return;
+                return
             }
         };
 
