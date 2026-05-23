@@ -100,6 +100,15 @@ impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
         self.0.player = None;
     }
 
+    pub fn set_camera(
+        &mut self,
+        start_position: GameVector<i64>,
+        end_position: GameVector<i64>,
+    ) {
+        self.0.camera.start_position = start_position;
+        self.0.camera.end_position = end_position;
+    }
+
     pub fn add_asteroid(
         &mut self,
         start_position: GameVector<i64>,
