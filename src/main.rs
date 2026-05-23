@@ -74,9 +74,7 @@ pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
         let _ = events::listen(&physics_send, &render_send, renderer.gimme_display(), &keysymmer, renderer.gimme_wm_delete_window());
 
         physics_handle.join().unwrap();
-        println!("AAAAA");
         render_handle.join().unwrap();
-        println!("BBBB");
     });
 
     error_from_scope.map_or_else(|| Ok(()), |error| Err(error))

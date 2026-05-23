@@ -332,7 +332,7 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             }
 
             self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
-            
+
             let pipeline_copy = {
                 let handle = self.pipeline.lock().expect("FUCK FUCKING SHIT MY PIPE IS BROKEN AAA");
                 handle.clone()
@@ -358,5 +358,5 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
 
         Ok(())
     }
-
 }
+

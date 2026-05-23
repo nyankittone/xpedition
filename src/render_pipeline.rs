@@ -222,5 +222,9 @@ impl<const A: usize, const P: usize> ReadRenderInfo<A, P> {
     pub const fn get_player(&self) -> Option<&PlayerRender> {
         self.0.player.as_ref()
     }
+    
+    pub const fn get_camera(&self) -> &CameraRender {
+        &self.0.camera
+    }
 }
 
