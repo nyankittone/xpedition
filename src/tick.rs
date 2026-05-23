@@ -296,20 +296,23 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
         // iterate on each entity in the pool. Then flush the alloc and free buffers afterwards.
         for (id, handle, _) in self.pool.iter() {
             let mut entity = handle.get_mut(id).unwrap();
-            if let Entity::Player(player) = &mut *entity {
-                let old_position = player.position;
-
-                let modification = player.velocity * (delta_time as i32);
-                player.position += GameVector {
-                    x: modification.x as i64,
-                    y: modification.y as i64,
-                };
-
-                proto_pipeline.set_player(old_position, player.position, 0.0, 0.0);
-            }
         }
 
         let _ = self.pool.flush_queue();
+
+        // handle player-specific physics. This owuld make sense to move out to another function if
+        // it grows in size.
+        {
+            let old_position = self.player.position;
+
+            let modification = self.player.velocity * (delta_time as i32);
+            self.player.position += GameVector {
+                x: modification.x as i64,
+                y: modification.y as i64,
+            };
+
+            proto_pipeline.set_player(old_position, self.player.position, 0.0, 0.0);
+        }
 
         // push the worked-on pipeline so the renderer can now use it
         let mut pipeline_handle = self.pipeline.lock().expect("Pipeline fucking died!!!!!!");
@@ -320,40 +323,25 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
     }
 }
 
-fn tick<const S: usize, const Q: usize, const A: usize, const P: usize>(
-    pool: &EntityPool<S, Q>,
-    render_pipeline: &sync::Mutex<rp::ReadRenderInfo<A, P>>,
-    delta_time: u64,
-    physics_events: &mpsc::Receiver<events::PhysicsEvent>,
-    player_id: u32,
-) {
-}
-
 pub fn start_physics<const A: usize, const P: usize>(
     render_pipeline: &sync::Mutex<rp::ReadRenderInfo<A, P>>,
+    physics_events: mpsc::Receiver<events::PhysicsEvent>,
 ) {
-    let pool = EntityPool::<1337, 67>::new();
-
     // Allocate any initial objects needed for the game to work. For now, that will just be the
     // player. In the future, it'll also include planets or large asteroids with gravity.
     // Should this function handle events of some kind? Or is that the responsibility of the ticking
     // function?
     // Run the ticking function in a loop forever.
+    let mut ticker = TickState::<1337, 67, _, _>::new(&render_pipeline, physics_events);
 
-    let mut handle = pool.get_handle();
-    let player_id = handle.allocate(Entity::Player(Player::new())).unwrap();
-
-    drop(handle);
-
-    // Run the ticking function, once every 60 ticks for now. Later I want to make it work well for
-    // running at 240 ticks/second max.
+    // Run the ticking function, 240 per second if doable.
 
     let mut delta_time = 1000000 / 240;
     const TICK_RATE: time::Duration = time::Duration::from_micros(1000000 / 240);
 
     loop {
         let before_tick = time::Instant::now();
-        tick(&pool, render_pipeline, delta_time, player_id);
+        ticker.tick(delta_time);
 
         let elapsed = before_tick.elapsed();
         if elapsed > TICK_RATE {

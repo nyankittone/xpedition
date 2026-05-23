@@ -1,5 +1,6 @@
 use std::io::Write as _;
 use std::sync;
+use std::sync::mpsc;
 use std::thread;
 use std::{process, time};
 
@@ -57,25 +58,21 @@ fn oopsie(error: render::XError) -> ! {
 
 pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
     let mut render_pipeline = sync::Mutex::new(render_pipeline::ReadRenderInfo::<128, 512>::new());
+    let (physics_send, physics_recv) = mpsc::channel::<events::PhysicsEvent>();
+    let (render_send, render_recv) = mpsc::channel::<events::RenderEvent>();
+    let (mut renderer, keysymmer) = render::DisplayState::new(args, &render_pipeline)?;
 
     let mut error_from_scope: Option<render::XError> = None;
     thread::scope(|scope| {
-        let handle = scope.spawn(|| tick::start_physics(&render_pipeline));
-
-        let (mut renderer, keysymmer) = match render::DisplayState::new(args, &render_pipeline) {
-            Ok(stuff) => stuff,
-            Err(error) => {
+        let physics_handle = scope.spawn(|| tick::start_physics(&render_pipeline, physics_recv));
+        let render_handle = scope.spawn(|| {
+            if let Err(error) = renderer.run(&keysymmer) {
                 error_from_scope = Some(error);
-                return
             }
-        };
+        });
 
-        if let Err(error) = renderer.run(&keysymmer) {
-            error_from_scope = Some(error);
-            return;
-        }
-
-        handle.join().unwrap();
+        physics_handle.join().unwrap();
+        render_handle.join().unwrap();
     });
 
     error_from_scope.map_or_else(|| Ok(()), |error| Err(error))
