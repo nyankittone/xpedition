@@ -19,6 +19,11 @@ pub struct PlayerRender {
     pub end_rotation: f32,
 }
 
+pub struct CameraRender {
+    pub start_position: GameVector<i64>,
+    pub end_position: GameVector<i64>,
+}
+
 pub struct ProjectileRender {
     pub start_position: GameVector<i64>,
     pub end_position: GameVector<i64>,
@@ -36,6 +41,7 @@ pub struct RenderInfo<const A: usize, const P: usize> {
     start_time: u64,
     delta_time: u64,
 
+    camera: CameraRender,
     player: Option<PlayerRender>,
     asteroids: [MaybeUninit<AsteroidRender>; A],
     projectiles: [MaybeUninit<ProjectileRender>; P],
@@ -48,6 +54,10 @@ impl<const A: usize, const P: usize> RenderInfo<A, P> {
             projectile_layer_count: 0,
             start_time: 0, // idk if 0 makes sense on initialization...
             delta_time: 0, // idk if 0 makes sense on initialization...
+            camera: CameraRender {
+                start_position: GameVector::new(0, 0),
+                end_position: GameVector::new(0, 0),
+            },
             player: None,
             asteroids: [const { MaybeUninit::uninit() }; A],
             projectiles: [const { MaybeUninit::uninit() }; P],

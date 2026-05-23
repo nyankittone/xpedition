@@ -274,6 +274,7 @@ struct TickState<'a, const S: usize, const Q: usize, const A: usize, const P: us
     pipeline: &'a sync::Mutex<rp::ReadRenderInfo<A, P>>,
     physics_events: mpsc::Receiver<events::PhysicsEvent>,
     player: Player,
+    camera_position: GameVector<i64>,
 }
 
 impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickState<'a, S, Q, A, P> {
@@ -286,6 +287,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             pipeline,
             physics_events,
             player: Player::new(),
+            camera_position: GameVector::new(0, 0),
         }
     }
 
