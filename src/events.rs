@@ -7,17 +7,36 @@
 use std::sync::mpsc;
 
 use x11rb::connection::Connection;
-use x11rb::rust_connection::RustConnection;
-use x11rb::protocol::xproto::*;
 use x11rb::protocol::Event;
+use x11rb::protocol::xproto::*;
+use x11rb::rust_connection::RustConnection;
+use xkeysym::{Keysym, key};
 
-use crate::render::{XError, Keysymmer};
+use crate::render::{Keysymmer, XError};
 
+#[derive(Copy, Clone)]
 pub struct PlayerControl {
     main_forward: bool,
     big_forward: bool,
     rotate_left: bool,
     rotate_right: bool,
+}
+
+impl PlayerControl {
+    pub fn new() -> Self {
+        Self {
+            main_forward: false,
+            big_forward: false,
+            rotate_left: false,
+            rotate_right: false,
+        }
+    }
+}
+
+impl Default for PlayerControl {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub enum PlayerSet {
@@ -36,6 +55,25 @@ pub enum RenderEvent {
     CloseWindow,
 }
 
+fn update_player_control(control: &mut PlayerControl, sym: Keysym, with: bool) -> bool {
+    // TODO: Implement a keymapping system that is used by this function in the future. For now,
+    // directly reading the keysym is fine.
+    let write_to: &mut bool = match sym.raw() {
+        key::w | key::W => &mut control.main_forward,
+        key::space => &mut control.big_forward,
+        key::a | key::A => &mut control.rotate_left,
+        key::d | key::D => &mut control.rotate_right,
+        _ => return false,
+    };
+
+    if *write_to == with {
+        return false;
+    }
+
+    *write_to = with;
+    true
+}
+
 pub fn listen(
     send_physics: &mpsc::Sender<PhysicsEvent>,
     send_render: &mpsc::Sender<RenderEvent>,
@@ -43,24 +81,45 @@ pub fn listen(
     keysymmer: &Keysymmer,
     wm_delete_window: Atom,
 ) -> Result<(), XError> {
+    let mut player_control = PlayerControl::new();
+
     loop {
         match display.wait_for_event()? {
             Event::KeyPress(event) => {
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
-                key_state.update(sym, true);
-            },
+                if update_player_control(&mut player_control, sym, true) {
+                    send_physics
+                        .send(PhysicsEvent::PlayerControl(player_control))
+                        .unwrap();
+                } else if {
+                    let sym = sym.raw();
+                    sym == key::s || sym == key::S
+                } {
+                    send_physics
+                        .send(PhysicsEvent::PlayerSet(PlayerSet::Reverse))
+                        .unwrap();
+                }
+            }
             Event::KeyRelease(event) => {
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
-                key_state.update(sym, false);
-            },
-            Event::ClientMessage(ClientMessageEvent {format: 32, data, ..}) => {
+                if update_player_control(&mut player_control, sym, false) {
+                    send_physics
+                        .send(PhysicsEvent::PlayerControl(player_control))
+                        .unwrap();
+                }
+            }
+            Event::ClientMessage(ClientMessageEvent {
+                format: 32, data, ..
+            }) => {
                 if data.as_data32()[0] == wm_delete_window {
                     send_physics.send(PhysicsEvent::Stop).unwrap();
                     send_render.send(RenderEvent::CloseWindow).unwrap();
-                    return Ok(());
+                    break;
                 }
-            },
+            }
             _ => (),
         }
     }
+
+    Ok(())
 }
