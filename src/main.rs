@@ -66,10 +66,12 @@ pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
     thread::scope(|scope| {
         let physics_handle = scope.spawn(|| tick::start_physics(&render_pipeline, physics_recv));
         let render_handle = scope.spawn(|| {
-            if let Err(error) = renderer.run() {
+            if let Err(error) = renderer.run(render_recv) {
                 error_from_scope = Some(error);
             }
         });
+
+        let _ = events::listen(&physics_send, &render_send, renderer.gimme_display(), &keysymmer, renderer.gimme_wm_delete_window());
 
         physics_handle.join().unwrap();
         render_handle.join().unwrap();

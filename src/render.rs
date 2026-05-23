@@ -3,7 +3,7 @@ use crate::render::render_entities;
 
 use std::{time, thread};
 use std::fmt::{self, Display, Debug, Write as _};
-use std::sync;
+use std::sync::{self, mpsc};
 
 use x11rb::connection::Connection;
 use x11rb::cookie::Cookie;
@@ -312,11 +312,17 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         &self.display
     }
 
-    pub fn run(&mut self) -> Result<(), XError> {
+    pub fn gimme_wm_delete_window(&self) -> u32 {
+        self.wm_delete_window
+    }
+
+    pub fn run(&self, render_events: mpsc::Receiver<events::RenderEvent>) -> Result<(), XError> {
         thread::sleep(time::Duration::from_secs(1)); // TODO: Remove this and fix panic.
         let mut debug_text_buffer = String::new();
 
         loop {
+            // Handle events from the master event handler.
+
             self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
             
             let pipeline_copy = {
