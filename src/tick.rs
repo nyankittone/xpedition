@@ -1,10 +1,12 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem::MaybeUninit;
 use std::sync;
+use std::sync::mpsc;
 use std::thread;
 use std::time;
 
 use crate::entities::*;
+use crate::events;
 use crate::game_vector::*;
 use crate::render_pipeline as rp;
 
@@ -261,36 +263,70 @@ impl<'a, const S: usize, const Q: usize> Iterator for SubEntityIterator<'a, S, Q
     }
 }
 
+struct TickState<'a, const S: usize, const Q: usize, const A: usize, const P: usize> {
+    pool: EntityPool<S, Q>,
+    pipeline: &'a sync::Mutex<rp::ReadRenderInfo<A, P>>,
+    physics_events: mpsc::Receiver<events::PhysicsEvent>,
+    player: Player,
+}
+
+impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickState<'a, S, Q, A, P> {
+    fn new(
+        pipeline: &'a sync::Mutex<rp::ReadRenderInfo<A, P>>,
+        physics_events: mpsc::Receiver<events::PhysicsEvent>,
+    ) -> Self {
+        Self {
+            pool: EntityPool::<S, Q>::new(),
+            pipeline,
+            physics_events,
+            player: Player::new(),
+        }
+    }
+
+    fn tick(&mut self, delta_time: u64) -> bool {
+        for event in self.physics_events.try_iter() {
+            use events::PhysicsEvent as pe;
+            match event {
+                _ => (),
+            }
+        }
+
+        let mut proto_pipeline = rp::WriteRenderInfo::<A, P>::new();
+
+        // iterate on each entity in the pool. Then flush the alloc and free buffers afterwards.
+        for (id, handle, _) in self.pool.iter() {
+            let mut entity = handle.get_mut(id).unwrap();
+            if let Entity::Player(player) = &mut *entity {
+                let old_position = player.position;
+
+                let modification = player.velocity * (delta_time as i32);
+                player.position += GameVector {
+                    x: modification.x as i64,
+                    y: modification.y as i64,
+                };
+
+                proto_pipeline.set_player(old_position, player.position, 0.0, 0.0);
+            }
+        }
+
+        let _ = self.pool.flush_queue();
+
+        // push the worked-on pipeline so the renderer can now use it
+        let mut pipeline_handle = self.pipeline.lock().expect("Pipeline fucking died!!!!!!");
+        *pipeline_handle = proto_pipeline.commit();
+        drop(pipeline_handle);
+
+        true
+    }
+}
+
 fn tick<const S: usize, const Q: usize, const A: usize, const P: usize>(
     pool: &EntityPool<S, Q>,
     render_pipeline: &sync::Mutex<rp::ReadRenderInfo<A, P>>,
     delta_time: u64,
+    physics_events: &mpsc::Receiver<events::PhysicsEvent>,
     player_id: u32,
 ) {
-    let mut proto_pipeline = rp::WriteRenderInfo::<A, P>::new();
-
-    // iterate on each entity in the pool. Then flush the alloc and free buffers afterwards.
-    for (id, handle, _) in pool.iter() {
-        let mut entity = handle.get_mut(id).unwrap();
-        if let Entity::Player(player) = &mut *entity {
-            let old_position = player.position;
-
-            let modification = player.velocity * (delta_time as i32);
-            player.position += GameVector {
-                x: modification.x as i64,
-                y: modification.y as i64,
-            };
-
-            proto_pipeline.set_player(old_position, player.position, 0.0, 0.0);
-        }
-    }
-
-    let _ = pool.flush_queue();
-    
-    // push the worked-on pipeline so the renderer can now use it
-    let mut pipeline_handle = render_pipeline.lock().expect("Pipeline fucking died!!!!!!");
-    *pipeline_handle = proto_pipeline.commit();
-    drop(pipeline_handle);
 }
 
 pub fn start_physics<const A: usize, const P: usize>(
@@ -307,14 +343,6 @@ pub fn start_physics<const A: usize, const P: usize>(
     let mut handle = pool.get_handle();
     let player_id = handle.allocate(Entity::Player(Player::new())).unwrap();
 
-    // Let's add a little bit of initial velocity to the player for testing purposes.
-    // let mut player = handle.get_mut(player_id).unwrap();
-    // if let Entity::Player(player) = &mut *player {
-    //     player.velocity.x += 128;
-    //     player.velocity.y += 16;
-    // }
-    //
-    // drop(player);
     drop(handle);
 
     // Run the ticking function, once every 60 ticks for now. Later I want to make it work well for
