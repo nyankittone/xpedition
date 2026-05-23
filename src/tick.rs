@@ -323,6 +323,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             };
 
             proto_pipeline.set_player(old_position, self.player.position, 0.0, 0.0);
+            proto_pipeline.set_camera(self.camera_position, self.camera_position);
         }
 
         // push the worked-on pipeline so the renderer can now use it
