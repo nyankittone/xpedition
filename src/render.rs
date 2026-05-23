@@ -68,49 +68,6 @@ impl From<ConnectError> for XError {
     }
 }
 
-#[derive(Default)]
-pub struct KeyState {
-    w: bool,
-    s: bool,
-    a: bool,
-    d: bool,
-}
-
-impl KeyState {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn update(&mut self, key: xkeysym::Keysym, pressed: bool) {
-        use xkeysym::key as k;
-        match key.raw() {
-            k::W | k::w => self.w = pressed,
-            k::S | k::s => self.s = pressed,
-            k::A | k::a => self.a = pressed,
-            k::D | k::d => self.d = pressed,
-            _ => (),
-        }
-    }
-
-    pub fn make_vector(&self) -> GameVector<i32> {
-        let mut returned = GameVector::new(0, 0);
-        if self.w {
-            returned.y -= 1;
-        }
-        if self.s {
-            returned.y += 1;
-        }
-        if self.a {
-            returned.x -= 1;
-        }
-        if self.d {
-            returned.x += 1;
-        }
-
-        returned
-    }
-}
-
 pub struct ProtoKeysymmer<'a, D: Connection> {
     cookie: Cookie<'a, D, GetKeyboardMappingReply>,
     min_keycode: u8,
@@ -355,43 +312,11 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         &self.display
     }
 
-    pub fn run(&mut self, keysymmer: &Keysymmer) -> Result<(), XError> {
-        // instantiating player state
-        let mut head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
-        let mut old_head_position = GameVector::<i32>::new(MID_X * SCALE_FACTOR, MID_Y * SCALE_FACTOR);
-        let mut head_velocity = GameVector::<i32>::new(0, 0);
-        let mut key_state = KeyState::new();
-
+    pub fn run(&mut self) -> Result<(), XError> {
+        thread::sleep(time::Duration::from_secs(1)); // TODO: Remove this and fix panic.
         let mut debug_text_buffer = String::new();
 
         loop {
-            while let Some(event) = self.display.poll_for_event()? {
-                match event {
-                    Event::Expose(_) => {
-                        self.display.poly_line (
-                            CoordMode::ORIGIN,
-                            self.window,
-                            self.gc,
-                            &[(old_head_position / SCALE_FACTOR).into(), (head_position / SCALE_FACTOR).into()]
-                        )?;
-                    },
-                    Event::KeyPress(event) => {
-                        let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
-                        key_state.update(sym, true);
-                    },
-                    Event::KeyRelease(event) => {
-                        let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
-                        key_state.update(sym, false);
-                    },
-                    Event::ClientMessage(ClientMessageEvent {format: 32, data, ..}) => {
-                        if data.as_data32()[0] == self.wm_delete_window {
-                            return Ok(());
-                        }
-                    },
-                    _ => (),
-                }
-            }
-
             self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
             
             let pipeline_copy = {
@@ -406,16 +331,12 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             let _ = write!(debug_text_buffer, "new: {:?}", pipeline_copy.get_player().unwrap().end_position);
             self.display.image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
 
-            self.display.poly_fill_rectangle(self.window, self.gc, &[Rectangle {
+            let _ = self.display.poly_fill_rectangle(self.window, self.gc, &[Rectangle {
                 x: (pipeline_copy.get_player().unwrap().end_position.x / 1000000) as i16,
                 y: (pipeline_copy.get_player().unwrap().end_position.y / 1000000) as i16,
                 width: 20,
                 height: 20,
             }]);
-
-            head_velocity += key_state.make_vector();
-            old_head_position = head_position;
-            head_position += head_velocity;
 
             self.display.flush()?;
             thread::sleep(time::Duration::from_millis(16));

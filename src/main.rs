@@ -66,7 +66,7 @@ pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
     thread::scope(|scope| {
         let physics_handle = scope.spawn(|| tick::start_physics(&render_pipeline, physics_recv));
         let render_handle = scope.spawn(|| {
-            if let Err(error) = renderer.run(&keysymmer) {
+            if let Err(error) = renderer.run() {
                 error_from_scope = Some(error);
             }
         });
