@@ -320,8 +320,16 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         thread::sleep(time::Duration::from_secs(1)); // TODO: Remove this and fix panic.
         let mut debug_text_buffer = String::new();
 
-        loop {
+        'biggie: loop {
             // Handle events from the master event handler.
+            for event in render_events.try_iter() {
+                use events::RenderEvent as re;
+                match event {
+                    re::CloseWindow => {
+                        break 'biggie
+                    },
+                }
+            }
 
             self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
             
@@ -347,6 +355,8 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             self.display.flush()?;
             thread::sleep(time::Duration::from_millis(16));
         }
+
+        Ok(())
     }
 
 }

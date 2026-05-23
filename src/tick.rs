@@ -4,6 +4,7 @@ use std::sync;
 use std::sync::mpsc;
 use std::thread;
 use std::time;
+use crate::log;
 
 use crate::entities::*;
 use crate::events;
@@ -263,6 +264,11 @@ impl<'a, const S: usize, const Q: usize> Iterator for SubEntityIterator<'a, S, Q
     }
 }
 
+enum TickSignal {
+    Normal,
+    StopMe,
+}
+
 struct TickState<'a, const S: usize, const Q: usize, const A: usize, const P: usize> {
     pool: EntityPool<S, Q>,
     pipeline: &'a sync::Mutex<rp::ReadRenderInfo<A, P>>,
@@ -283,10 +289,13 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
         }
     }
 
-    fn tick(&mut self, delta_time: u64) -> bool {
+    fn tick(&mut self, delta_time: u64) -> TickSignal {
         for event in self.physics_events.try_iter() {
             use events::PhysicsEvent as pe;
             match event {
+                pe::Stop => {
+                    return TickSignal::StopMe;
+                }
                 _ => (),
             }
         }
@@ -319,7 +328,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
         *pipeline_handle = proto_pipeline.commit();
         drop(pipeline_handle);
 
-        true
+        TickSignal::Normal
     }
 }
 
@@ -341,7 +350,9 @@ pub fn start_physics<const A: usize, const P: usize>(
 
     loop {
         let before_tick = time::Instant::now();
-        ticker.tick(delta_time);
+        if let TickSignal::StopMe = ticker.tick(delta_time) {
+            break;
+        }
 
         let elapsed = before_tick.elapsed();
         if elapsed > TICK_RATE {
@@ -352,6 +363,8 @@ pub fn start_physics<const A: usize, const P: usize>(
         delta_time = TICK_RATE.as_micros() as u64;
         thread::sleep(TICK_RATE - elapsed);
     }
+
+    println!("Stopping physics.");
 }
 
 // TODO: Add unit tests for the allocator. HA!
