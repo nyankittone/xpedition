@@ -214,7 +214,7 @@ const HEIGHT: u16 = 600;
 const LINE_THICKNESS: u32 = 5;
 const MID_X: i32 = WIDTH as i32 / 2;
 const MID_Y: i32 = HEIGHT as i32 / 2;
-const SCALE_FACTOR: i32 = 8;
+const SCALE_FACTOR: i64 = 1000000;
 
 impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
     pub fn new(args: &Args, pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>) -> Result<(Self, Keysymmer), XError> {
@@ -317,7 +317,7 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
     }
 
     pub fn run(&self, render_events: mpsc::Receiver<events::RenderEvent>) -> Result<(), XError> {
-        thread::sleep(time::Duration::from_secs(1)); // TODO: Remove this and fix panic.
+        // thread::sleep(time::Duration::from_secs(1)); // TODO: Remove this and fix panic.
         let mut debug_text_buffer = String::new();
 
         'biggie: loop {
@@ -338,18 +338,28 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
                 handle.clone()
             };
 
+            let player = match pipeline_copy.get_player() {
+                Some(player) => player.end_position,
+                None => continue,
+            };
+
             debug_text_buffer.clear();
-            let _ = write!(debug_text_buffer, "old: {:?}", pipeline_copy.get_player().unwrap().start_position);
+            let _ = write!(debug_text_buffer, "new: {:?}", player);
             self.display.image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
-            debug_text_buffer.clear();
-            let _ = write!(debug_text_buffer, "new: {:?}", pipeline_copy.get_player().unwrap().end_position);
-            self.display.image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
+
+            // TODO: Have a seperate function for rendering the player, one that actually draws a
+            // rocket-like thing that shows it actively thrusting, and its rotation.
+            let player = match pipeline_copy.get_player() {
+                Some(player) => player.end_position,
+                None => continue,
+            };
+            let camera = pipeline_copy.get_camera().end_position;
 
             let _ = self.display.poly_fill_rectangle(self.window, self.gc, &[Rectangle {
-                x: (pipeline_copy.get_player().unwrap().end_position.x / 1000000) as i16,
-                y: (pipeline_copy.get_player().unwrap().end_position.y / 1000000) as i16,
-                width: 20,
-                height: 20,
+                x: (((player.x - camera.x) / SCALE_FACTOR) + (WIDTH as i64 / 2)) as i16 - 20,
+                y: (((player.y - camera.y) / SCALE_FACTOR) + (HEIGHT as i64 / 2)) as i16 - 20,
+                width: 40,
+                height: 40,
             }]);
 
             self.display.flush()?;
