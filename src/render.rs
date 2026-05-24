@@ -223,6 +223,9 @@ pub struct DisplayState<'a, const A: usize, const P: usize> {
     pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>,
     gc: u32,
     player_gc: u32,
+    player_pixel_normal: u32,
+    player_pixel_boost: u32,
+    player_pixel_big_boost: u32,
     font: u32,
     window: u32,
     wm_delete_window: u32,
@@ -242,6 +245,10 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
     ) -> Result<(Self, Keysymmer), XError> {
         let (display, screen) = x11rb::connect(None)?;
         let screen = &display.setup().roots[screen];
+
+        let player_pixel_normal = display.alloc_color(screen.default_colormap, 0, u16::MAX / 2, u16::MAX)?;
+        let player_pixel_boost = display.alloc_color(screen.default_colormap, u16::MAX, u16::MAX / 2, 0)?;
+        let player_pixel_big_boost = display.alloc_color(screen.default_colormap, u16::MAX, 0, 0)?;
 
         // create an appropriate GC and window
         // generate XIDs for window and GC
@@ -311,6 +318,11 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             b"Xpedition Prototype",
         )?;
 
+        // Actually get the pixel values for the colors we want
+        let player_pixel_normal = player_pixel_normal.reply()?.pixel;
+        let player_pixel_boost = player_pixel_boost.reply()?.pixel;
+        let player_pixel_big_boost = player_pixel_big_boost.reply()?.pixel;
+
         // create GCs
         display.create_gc(
             gc,
@@ -323,7 +335,7 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         display.create_gc(
             player_gc,
             screen.root,
-            &CreateGCAux::default().foreground(screen.white_pixel).line_width(LINE_THICKNESS),
+            &CreateGCAux::default().foreground(player_pixel_normal).line_width(LINE_THICKNESS),
         )?;
 
         let keysymmer = keysymmer.finish_init()?;
@@ -335,6 +347,9 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
                 pipeline,
                 gc,
                 player_gc,
+                player_pixel_normal,
+                player_pixel_boost,
+                player_pixel_big_boost,
                 font,
                 window,
                 wm_delete_window: delete_signal,
