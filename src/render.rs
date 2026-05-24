@@ -1,6 +1,7 @@
 extern crate x11rb;
 use crate::render::render_entities;
 
+use core::f64;
 use std::fmt::{self, Debug, Display, Write as _};
 use std::sync::{self, mpsc};
 use std::{thread, time};
@@ -318,10 +319,8 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             b"Xpedition Prototype",
         )?;
 
-        // Actually get the pixel values for the colors we want
+        // Actually get the pixel value for the main player color
         let player_pixel_normal = player_pixel_normal.reply()?.pixel;
-        let player_pixel_boost = player_pixel_boost.reply()?.pixel;
-        let player_pixel_big_boost = player_pixel_big_boost.reply()?.pixel;
 
         // create GCs
         display.create_gc(
@@ -338,7 +337,11 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             &CreateGCAux::default().foreground(player_pixel_normal).line_width(LINE_THICKNESS),
         )?;
 
+        // Await everything else we haven't used yet
+        let player_pixel_boost = player_pixel_boost.reply()?.pixel;
+        let player_pixel_big_boost = player_pixel_big_boost.reply()?.pixel;
         let keysymmer = keysymmer.finish_init()?;
+
         display.flush()?;
 
         Ok((
@@ -419,6 +422,45 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             thread::sleep(time::Duration::from_millis(16));
         }
 
+        Ok(())
+    }
+
+    // Should I have this rendering function do lerping of the player position on its own, or have
+    // it fed in an already lerped player info? I think the former is cleaner and will be more
+    // consistent in code.
+    pub fn render_player(&self, player: &render_pipeline::PlayerRender) -> Result<(), XError> {
+        // TODO: Make a Radians type that is more restricted in how it's used to make calculations
+        // more robust.
+        const fn degrees_to_radians(degrees: f64) -> f64 {
+            degrees / 180.0 * f64::consts::PI
+        }
+
+        struct LineAndAngle {
+            length: i64,
+            angle: f64,
+        }
+
+        const POINTS: [LineAndAngle; 4] = [
+            LineAndAngle {length: 20, angle: 0.0},
+            LineAndAngle {length: 20, angle: degrees_to_radians(140.0)},
+            LineAndAngle {length: 5, angle: degrees_to_radians(180.0)},
+            LineAndAngle {length: 20, angle: degrees_to_radians(220.0)},
+        ];
+
+        let transformed_points = POINTS.iter().cycle().take(5).map(|input| {
+            Point {
+                x: ((f64::cos(input.angle + player.end_rotation as f64)
+                    * (input.length as f64)) as i64
+                    + (WIDTH as i64 / 2)
+                    + (player.end_position.x / SCALE_FACTOR)) as i16,
+                y: ((f64::sin(input.angle + player.end_rotation as f64)
+                    * (input.length as f64)) as i64 * -1
+                    + (HEIGHT as i64 / 2)
+                    + (player.end_position.y / SCALE_FACTOR)) as i16,
+            }
+        }).collect::<Vec<Point>>();
+
+        self.display.poly_line(CoordMode::ORIGIN, self.window, self.player_gc, &transformed_points)?;
         Ok(())
     }
 }
