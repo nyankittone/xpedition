@@ -393,30 +393,16 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             };
 
             let player = match pipeline_copy.get_player() {
-                Some(player) => player.end_position,
+                Some(player) => player,
                 None => continue,
             };
 
             debug_text_buffer.clear();
-            let _ = write!(debug_text_buffer, "new: {:?}", player);
+            let _ = write!(debug_text_buffer, "new: {:?}", player.end_position);
             self.display
                 .image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
 
-            // TODO: Have a seperate function for rendering the player, one that actually draws a
-            // rocket-like thing that shows it actively thrusting, and its rotation. Ideally on a
-            // different layer, but I'm not sure.
-            let camera = pipeline_copy.get_camera().end_position;
-
-            self.display.poly_fill_rectangle(
-                self.window,
-                self.gc,
-                &[Rectangle {
-                    x: (((player.x - camera.x) / SCALE_FACTOR) + (WIDTH as i64 / 2)) as i16 - 20,
-                    y: (((player.y - camera.y) / SCALE_FACTOR) + (HEIGHT as i64 / 2)) as i16 - 20,
-                    width: 40,
-                    height: 40,
-                }],
-            )?;
+            self.render_player(&player)?;
 
             self.display.flush()?;
             thread::sleep(time::Duration::from_millis(16));
@@ -442,9 +428,9 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
 
         const POINTS: [LineAndAngle; 4] = [
             LineAndAngle {length: 20, angle: 0.0},
-            LineAndAngle {length: 20, angle: degrees_to_radians(140.0)},
-            LineAndAngle {length: 5, angle: degrees_to_radians(180.0)},
-            LineAndAngle {length: 20, angle: degrees_to_radians(220.0)},
+            LineAndAngle {length: 20, angle: degrees_to_radians(130.0)},
+            LineAndAngle {length: 3, angle: degrees_to_radians(180.0)},
+            LineAndAngle {length: 20, angle: degrees_to_radians(230.0)},
         ];
 
         let transformed_points = POINTS.iter().cycle().take(5).map(|input| {
