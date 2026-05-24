@@ -1,23 +1,23 @@
 extern crate x11rb;
 use crate::render::render_entities;
 
-use std::{time, thread};
-use std::fmt::{self, Display, Debug, Write as _};
+use std::fmt::{self, Debug, Display, Write as _};
 use std::sync::{self, mpsc};
+use std::{thread, time};
 
+use x11rb::COPY_DEPTH_FROM_PARENT;
 use x11rb::connection::Connection;
 use x11rb::cookie::Cookie;
-use x11rb::errors::{ConnectionError, ReplyOrIdError, ReplyError, ConnectError};
-use x11rb::protocol::xproto::*;
+use x11rb::errors::{ConnectError, ConnectionError, ReplyError, ReplyOrIdError};
 use x11rb::protocol::Event;
+use x11rb::protocol::xproto::*;
 use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
-use x11rb::COPY_DEPTH_FROM_PARENT;
 
-use xkeysym::KeyCode;
+use crate::argparse::Args;
 use crate::game_vector::GameVector;
 use crate::*;
-use crate::argparse::Args;
+use xkeysym::KeyCode;
 
 use std::os::unix::ffi::OsStrExt;
 
@@ -77,9 +77,9 @@ impl<'a, D: Connection> ProtoKeysymmer<'a, D> {
     pub fn init(display: &'a D) -> Result<Self, XError> {
         let setup = display.setup();
         Ok(Self {
-            cookie: display.get_keyboard_mapping (
+            cookie: display.get_keyboard_mapping(
                 setup.min_keycode,
-                setup.max_keycode - setup.min_keycode + 1
+                setup.max_keycode - setup.min_keycode + 1,
             )?,
             min_keycode: setup.min_keycode,
         })
@@ -102,13 +102,14 @@ pub struct Keysymmer {
 impl Keysymmer {
     pub fn code_to_sym(&self, code: Keycode, _page: u8) -> Option<xkeysym::Keysym> {
         // TODO: wtf do I do with the pages???
-        xkeysym::keysym (
+        xkeysym::keysym(
             KeyCode::new(code as u32),
             0,
             KeyCode::new(self.min_keycode as u32),
             self.keysyms.keysyms_per_keycode,
-            &self.keysyms.keysyms
-        ).map(|sym| sym.into())
+            &self.keysyms.keysyms,
+        )
+        .map(|sym| sym.into())
     }
 }
 
@@ -119,7 +120,12 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     // Check to see if our desired font is already findable. If so, load it immediately and
     // return.
     let font_list = display.list_fonts(u16::MAX, FONT)?.reply()?;
-    if font_list.names.iter().map(|entry| &entry.name).any(|entry| entry == FONT) {
+    if font_list
+        .names
+        .iter()
+        .map(|entry| &entry.name)
+        .any(|entry| entry == FONT)
+    {
         display.open_font(font_id, FONT)?;
         return Ok(true);
     }
@@ -127,7 +133,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     // if not, check the font path. Does it have our custom font path already?
     let old_font_path = display.get_font_path()?;
     // While waiting, let's get the absolute path of the font directory.
-    
+
     // TODO: Making this is cringe. Can we instead re-use some other path allocation later on?
     // Cool.
     let mut my_fonts = match std::path::absolute(args.assets_dir.as_path()) {
@@ -136,29 +142,29 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
             warn!(error, "error trying to get font path");
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
-        },
+        }
     };
     my_fonts.push(FONT_PATH);
-    
+
     match my_fonts.try_exists() {
         Ok(false) => {
-            let error = errors::ResourceIntegrityError::associate_path (
+            let error = errors::ResourceIntegrityError::associate_path(
                 &args.assets_dir,
-                errors::ResourceError::from(my_fonts.as_path())
+                errors::ResourceError::from(my_fonts.as_path()),
             );
             warn!(error);
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
-        },
+        }
         Err(_) => {
-            let error = errors::ResourceIntegrityError::associate_path (
+            let error = errors::ResourceIntegrityError::associate_path(
                 &args.assets_dir,
-                errors::ResourceError::from(my_fonts.as_path())
+                errors::ResourceError::from(my_fonts.as_path()),
             );
             warn!(error, "failed to check if font dirctory exists");
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
-        },
+        }
         _ => (),
     }
 
@@ -167,8 +173,13 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     // the best of our knowledge. Load fixed and log a reasonable error.
     // TODO: Add additional check for this path but with a trailing forward slash.
     let old_font_path = old_font_path.reply()?;
-    if old_font_path.path.iter().map(|entry| &entry.name).any(|entry| entry == my_fonts.as_os_str().as_bytes()) {
-        let error = errors::ResourceIntegrityError::associate_path (
+    if old_font_path
+        .path
+        .iter()
+        .map(|entry| &entry.name)
+        .any(|entry| entry == my_fonts.as_os_str().as_bytes())
+    {
+        let error = errors::ResourceIntegrityError::associate_path(
             &args.assets_dir,
             errors::ResourceError::from(my_fonts.as_path()),
         );
@@ -179,7 +190,9 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
 
     // Set the font path to include the Dogica font directory, now that it looks reasonable that
     // the reason it initially failed is due to having the font path set incorrectly.
-    let my_fonts_as_str = Str { name: Vec::from(my_fonts.as_os_str().as_bytes()) };
+    let my_fonts_as_str = Str {
+        name: Vec::from(my_fonts.as_os_str().as_bytes()),
+    };
     let mut new_font_path = old_font_path;
     new_font_path.path.insert(0, my_fonts_as_str);
     let old_font_path = &new_font_path.path[1..];
@@ -187,7 +200,12 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
 
     // Check the font we initially checked for once again. Load it if successfully found.
     let font_list = display.list_fonts(u16::MAX, FONT)?.reply()?;
-    if font_list.names.iter().map(|entry| &entry.name).any(|entry| entry == FONT) {
+    if font_list
+        .names
+        .iter()
+        .map(|entry| &entry.name)
+        .any(|entry| entry == FONT)
+    {
         display.open_font(font_id, FONT)?;
         display.set_font_path(old_font_path)?;
         return Ok(true);
@@ -204,6 +222,7 @@ pub struct DisplayState<'a, const A: usize, const P: usize> {
     display: RustConnection,
     pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>,
     gc: u32,
+    player_gc: u32,
     font: u32,
     window: u32,
     wm_delete_window: u32,
@@ -217,14 +236,20 @@ const MID_Y: i32 = HEIGHT as i32 / 2;
 const SCALE_FACTOR: i64 = 1000000;
 
 impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
-    pub fn new(args: &Args, pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>) -> Result<(Self, Keysymmer), XError> {
+    pub fn new(
+        args: &Args,
+        pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>,
+    ) -> Result<(Self, Keysymmer), XError> {
         let (display, screen) = x11rb::connect(None)?;
         let screen = &display.setup().roots[screen];
 
         // create an appropriate GC and window
         // generate XIDs for window and GC
-        let (window, gc, font) = (
-            display.generate_id()?, display.generate_id()?, display.generate_id()?,
+        let (window, gc, player_gc, font) = (
+            display.generate_id()?,
+            display.generate_id()?,
+            display.generate_id()?,
+            display.generate_id()?,
         );
 
         let keysymmer = ProtoKeysymmer::init(&display)?;
@@ -232,7 +257,7 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         let delete_signal = display.intern_atom(false, b"WM_DELETE_WINDOW")?;
         let wm_protocols = display.intern_atom(false, b"WM_PROTOCOLS")?;
 
-        display.create_window (
+        display.create_window(
             COPY_DEPTH_FROM_PARENT,
             window,
             screen.root,
@@ -242,9 +267,10 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             HEIGHT,
             0,
             WindowClass::INPUT_OUTPUT,
-            screen.root_visual, &CreateWindowAux::default()
+            screen.root_visual,
+            &CreateWindowAux::default()
                 .background_pixel(screen.black_pixel)
-                .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE)
+                .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE),
         )?;
 
         // Try to load the font lol
@@ -261,23 +287,23 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         // await the WM_DELETE_WINDOW atom and add it to WM_PROTOCOLS on our window
         let delete_signal = delete_signal.reply()?.atom;
         let wm_protocols = wm_protocols.reply()?.atom;
-        display.change_property32 (
+        display.change_property32(
             PropMode::REPLACE,
             window,
             wm_protocols,
             AtomEnum::ATOM,
-            &[delete_signal]
+            &[delete_signal],
         )?;
 
         // Set the window title and class
-        display.change_property8 (
+        display.change_property8(
             PropMode::REPLACE,
             window,
             AtomEnum::WM_CLASS,
             AtomEnum::STRING,
             b"xpedition-game",
         )?;
-        display.change_property8 (
+        display.change_property8(
             PropMode::REPLACE,
             window,
             AtomEnum::WM_NAME,
@@ -285,27 +311,36 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             b"Xpedition Prototype",
         )?;
 
-        // create GC
-        display.create_gc (
+        // create GCs
+        display.create_gc(
             gc,
             screen.root,
             &CreateGCAux::default()
                 .foreground(screen.white_pixel)
                 .line_width(LINE_THICKNESS)
-                .font(font)
+                .font(font),
+        )?;
+        display.create_gc(
+            player_gc,
+            screen.root,
+            &CreateGCAux::default().foreground(screen.white_pixel).line_width(LINE_THICKNESS),
         )?;
 
         let keysymmer = keysymmer.finish_init()?;
         display.flush()?;
 
-        Ok((Self {
-            display,
-            pipeline,
-            gc,
-            font,
-            window,
-            wm_delete_window: delete_signal,
-        }, keysymmer))
+        Ok((
+            Self {
+                display,
+                pipeline,
+                gc,
+                player_gc,
+                font,
+                window,
+                wm_delete_window: delete_signal,
+            },
+            keysymmer,
+        ))
     }
 
     pub fn gimme_display(&self) -> &RustConnection {
@@ -325,16 +360,17 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             for event in render_events.try_iter() {
                 use events::RenderEvent as re;
                 match event {
-                    re::CloseWindow => {
-                        break 'biggie
-                    },
+                    re::CloseWindow => break 'biggie,
                 }
             }
 
             self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
 
             let pipeline_copy = {
-                let handle = self.pipeline.lock().expect("FUCK FUCKING SHIT MY PIPE IS BROKEN AAA");
+                let handle = self
+                    .pipeline
+                    .lock()
+                    .expect("FUCK FUCKING SHIT MY PIPE IS BROKEN AAA");
                 handle.clone()
             };
 
@@ -345,22 +381,24 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
 
             debug_text_buffer.clear();
             let _ = write!(debug_text_buffer, "new: {:?}", player);
-            self.display.image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
+            self.display
+                .image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
 
             // TODO: Have a seperate function for rendering the player, one that actually draws a
-            // rocket-like thing that shows it actively thrusting, and its rotation.
-            let player = match pipeline_copy.get_player() {
-                Some(player) => player.end_position,
-                None => continue,
-            };
+            // rocket-like thing that shows it actively thrusting, and its rotation. Ideally on a
+            // different layer, but I'm not sure.
             let camera = pipeline_copy.get_camera().end_position;
 
-            let _ = self.display.poly_fill_rectangle(self.window, self.gc, &[Rectangle {
-                x: (((player.x - camera.x) / SCALE_FACTOR) + (WIDTH as i64 / 2)) as i16 - 20,
-                y: (((player.y - camera.y) / SCALE_FACTOR) + (HEIGHT as i64 / 2)) as i16 - 20,
-                width: 40,
-                height: 40,
-            }]);
+            self.display.poly_fill_rectangle(
+                self.window,
+                self.gc,
+                &[Rectangle {
+                    x: (((player.x - camera.x) / SCALE_FACTOR) + (WIDTH as i64 / 2)) as i16 - 20,
+                    y: (((player.y - camera.y) / SCALE_FACTOR) + (HEIGHT as i64 / 2)) as i16 - 20,
+                    width: 40,
+                    height: 40,
+                }],
+            )?;
 
             self.display.flush()?;
             thread::sleep(time::Duration::from_millis(16));
@@ -369,4 +407,3 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         Ok(())
     }
 }
-
