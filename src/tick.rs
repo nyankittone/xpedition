@@ -315,6 +315,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
         // it grows in size.
         {
             let old_position = self.player.position;
+            let old_rotation = self.player.rotation;
 
             let modification = self.player.velocity * (delta_time as i32);
             self.player.position += GameVector {
@@ -322,7 +323,9 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
                 y: modification.y as i64,
             };
 
-            proto_pipeline.set_player(old_position, self.player.position, 0.0, 0.0);
+            self.player.rotation += 0.000003 * delta_time as f32;
+
+            proto_pipeline.set_player(old_position, self.player.position, old_rotation, self.player.rotation);
             proto_pipeline.set_camera(self.camera_position, self.camera_position);
         }
 
