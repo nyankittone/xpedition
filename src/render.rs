@@ -247,9 +247,12 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         let (display, screen) = x11rb::connect(None)?;
         let screen = &display.setup().roots[screen];
 
-        let player_pixel_normal = display.alloc_color(screen.default_colormap, 0, u16::MAX / 2, u16::MAX)?;
-        let player_pixel_boost = display.alloc_color(screen.default_colormap, u16::MAX, u16::MAX / 2, 0)?;
-        let player_pixel_big_boost = display.alloc_color(screen.default_colormap, u16::MAX, 0, 0)?;
+        let player_pixel_normal =
+            display.alloc_color(screen.default_colormap, 0, u16::MAX / 2, u16::MAX)?;
+        let player_pixel_boost =
+            display.alloc_color(screen.default_colormap, u16::MAX, u16::MAX / 2, 0)?;
+        let player_pixel_big_boost =
+            display.alloc_color(screen.default_colormap, u16::MAX, 0, 0)?;
 
         // create an appropriate GC and window
         // generate XIDs for window and GC
@@ -334,7 +337,9 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         display.create_gc(
             player_gc,
             screen.root,
-            &CreateGCAux::default().foreground(player_pixel_normal).line_width(LINE_THICKNESS),
+            &CreateGCAux::default()
+                .foreground(player_pixel_normal)
+                .line_width(LINE_THICKNESS),
         )?;
 
         // Await everything else we haven't used yet
@@ -427,26 +432,47 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         }
 
         const POINTS: [LineAndAngle; 4] = [
-            LineAndAngle {length: 20, angle: 0.0},
-            LineAndAngle {length: 20, angle: degrees_to_radians(130.0)},
-            LineAndAngle {length: 3, angle: degrees_to_radians(180.0)},
-            LineAndAngle {length: 20, angle: degrees_to_radians(230.0)},
+            LineAndAngle {
+                length: 10,
+                angle: 0.0,
+            },
+            LineAndAngle {
+                length: 10,
+                angle: degrees_to_radians(130.0),
+            },
+            LineAndAngle {
+                length: 1,
+                angle: degrees_to_radians(180.0),
+            },
+            LineAndAngle {
+                length: 10,
+                angle: degrees_to_radians(230.0),
+            },
         ];
 
-        let transformed_points = POINTS.iter().cycle().take(5).map(|input| {
-            Point {
-                x: ((f64::cos(input.angle + player.end_rotation as f64)
-                    * (input.length as f64)) as i64
+        let transformed_points = POINTS
+            .iter()
+            .cycle()
+            .take(5)
+            .map(|input| Point {
+                x: ((f64::sin(input.angle + player.end_rotation as f64) * (input.length as f64))
+                    as i64
                     + (WIDTH as i64 / 2)
                     + (player.end_position.x / SCALE_FACTOR)) as i16,
-                y: ((f64::sin(input.angle + player.end_rotation as f64)
-                    * (input.length as f64)) as i64 * -1
+                y: ((f64::cos(input.angle + player.end_rotation as f64) * (input.length as f64))
+                    as i64
+                    * -1
                     + (HEIGHT as i64 / 2)
                     + (player.end_position.y / SCALE_FACTOR)) as i16,
-            }
-        }).collect::<Vec<Point>>();
+            })
+            .collect::<Vec<Point>>();
 
-        self.display.poly_line(CoordMode::ORIGIN, self.window, self.player_gc, &transformed_points)?;
+        self.display.poly_line(
+            CoordMode::ORIGIN,
+            self.window,
+            self.player_gc,
+            &transformed_points,
+        )?;
         Ok(())
     }
 }
