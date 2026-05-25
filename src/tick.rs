@@ -291,7 +291,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
         }
     }
 
-    fn tick(&mut self, delta_time: u64) -> TickSignal {
+    fn tick(&mut self, delta_time: f64) -> TickSignal {
         for event in self.physics_events.try_iter() {
             use events::PhysicsEvent as pe;
             match event {
@@ -317,13 +317,17 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             let old_position = self.player.position;
             let old_rotation = self.player.rotation;
 
-            let modification = self.player.velocity * (delta_time as i32);
+            self.player.velocity.x += 5;
+
+            let modification = self.player.velocity * ((delta_time * 1000000.0) as i32) / 1000000;
             self.player.position += GameVector {
                 x: modification.x as i64,
                 y: modification.y as i64,
             };
 
-            self.player.rotation += 0.000003 * delta_time as f32;
+            self.player.velocity.x += 5;
+
+            self.player.rotation += 1.0 * delta_time as f32;
 
             proto_pipeline.set_player(old_position, self.player.position, old_rotation, self.player.rotation);
             proto_pipeline.set_camera(self.camera_position, self.camera_position);
@@ -348,10 +352,11 @@ pub fn start_physics<const A: usize, const P: usize>(
     // function?
     // Run the ticking function in a loop forever.
     let mut ticker = TickState::<1337, 67, _, _>::new(&render_pipeline, physics_events);
+    ticker.player.velocity.x = -44000;
 
     // Run the ticking function, 240 per second if doable.
 
-    let mut delta_time = 1000000 / 240;
+    let mut delta_time: f64 = 1.0 / 240.0;
     const TICK_RATE: time::Duration = time::Duration::from_micros(1000000 / 240);
 
     loop {
@@ -362,11 +367,11 @@ pub fn start_physics<const A: usize, const P: usize>(
 
         let elapsed = before_tick.elapsed();
         if elapsed > TICK_RATE {
-            delta_time = elapsed.as_micros() as u64;
+            delta_time = elapsed.as_secs_f64();
             continue;
         }
 
-        delta_time = TICK_RATE.as_micros() as u64;
+        delta_time = TICK_RATE.as_secs_f64();
         thread::sleep(TICK_RATE - elapsed);
     }
 

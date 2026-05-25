@@ -237,7 +237,7 @@ const HEIGHT: u16 = 600;
 const LINE_THICKNESS: u32 = 5;
 const MID_X: i32 = WIDTH as i32 / 2;
 const MID_Y: i32 = HEIGHT as i32 / 2;
-const SCALE_FACTOR: i64 = 1000000;
+const SCALE_FACTOR: i64 = 1000;
 
 impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
     pub fn new(
@@ -410,7 +410,7 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             self.render_player(&player)?;
 
             self.display.flush()?;
-            thread::sleep(time::Duration::from_millis(16));
+            thread::sleep(time::Duration::from_millis(1));
         }
 
         Ok(())
