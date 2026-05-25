@@ -297,7 +297,10 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             match event {
                 pe::Stop => {
                     return TickSignal::StopMe;
-                }
+                },
+                pe::PlayerControl(control) => {
+                    eprintln!("{:?}", control);
+                },
                 _ => (),
             }
         }

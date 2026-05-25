@@ -14,7 +14,7 @@ use xkeysym::{Keysym, key};
 
 use crate::render::{Keysymmer, XError};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PlayerControl {
     main_forward: bool,
     big_forward: bool,
