@@ -127,7 +127,14 @@ pub fn listen(
                 }
 
                 let current_keeb_state = display.query_keymap()?.reply()?;
-                eprintln!("mew {}", current_keeb_state.keys[(event.detail / 8) as usize] & (1u8 << (event.detail % 8)) > 0);
+                if current_keeb_state.keys[(event.detail / 8) as usize]
+                    & (1u8 << (event.detail % 8))
+                    > 0
+                {
+                    continue;
+                }
+
+                eprintln!("SENDING EFFECTIVE KEY RELEASE");
 
                 if update_player_control(&mut player_control, sym, false) {
                     send_physics
