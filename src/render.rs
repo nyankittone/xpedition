@@ -431,7 +431,7 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             angle: f64,
         }
 
-        const POINTS: [LineAndAngle; 4] = [
+        const POINTS: [LineAndAngle; 5] = [
             LineAndAngle {
                 length: 10,
                 angle: 0.0,
@@ -448,12 +448,13 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
                 length: 10,
                 angle: degrees_to_radians(230.0),
             },
+            LineAndAngle {
+                length: 10,
+                angle: 0.0,
+            },
         ];
 
         let transformed_points = POINTS
-            .iter()
-            .cycle()
-            .take(5)
             .map(|input| Point {
                 x: ((f64::sin(input.angle + player.end_rotation as f64) * (input.length as f64))
                     as i64
@@ -464,8 +465,7 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
                     * -1
                     + (HEIGHT as i64 / 2)
                     + (player.end_position.y / SCALE_FACTOR)) as i16,
-            })
-            .collect::<Vec<Point>>();
+            });
 
         self.display.poly_line(
             CoordMode::ORIGIN,
