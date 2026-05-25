@@ -3,8 +3,8 @@ use crate::game_vector::GameVector;
 #[derive(Debug, Copy, Clone)]
 pub struct Player {
     pub position: GameVector<i64>,
-    pub rotation: f32,
-    pub velocity: GameVector<i32>,
+    pub rotation: f64,
+    pub velocity: GameVector<f64>,
     pub rotation_velocity: f64,
     pub health_current: u32,
     pub health_max: u32,
@@ -21,7 +21,7 @@ impl Player {
         Self {
             position: GameVector::new(0, 0),
             rotation: 0.0,
-            velocity: GameVector::new(0, 0),
+            velocity: GameVector::new(0.0, 0.0),
             rotation_velocity: 0.0,
             health_current: 100,
             health_max: 100,

@@ -324,15 +324,18 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             let old_rotation = self.player.rotation;
 
             // Updating position
-            self.player.velocity.x += 5;
+            // TODO: Store player velocity as a float so adjusting it according to delta_time is
+            // sensible
+            self.player.velocity.x += 4800.0 * delta_time;
 
-            let modification = self.player.velocity * ((delta_time * 1000000.0) as i32) / 1000000;
-            self.player.position += GameVector {
-                x: modification.x as i64,
-                y: modification.y as i64,
+            let casted_velocity = GameVector {
+                x: (self.player.velocity.x * delta_time) as i64,
+                y: (self.player.velocity.y * delta_time) as i64,
             };
+            eprintln!("BBBB {:?}", casted_velocity);
+            self.player.position += casted_velocity;
 
-            self.player.velocity.x += 5;
+            self.player.velocity.x += 1000.0 * delta_time;
 
             // Updating rotation
             let rotation_mod = match self.player_control {
@@ -341,10 +344,10 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
                 _ => 0.0,
             };
             self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
-            self.player.rotation += self.player.rotation_velocity as f32 * (delta_time as f32);
+            self.player.rotation += self.player.rotation_velocity * delta_time;
             self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
 
-            proto_pipeline.set_player(old_position, self.player.position, old_rotation, self.player.rotation);
+            proto_pipeline.set_player(old_position, self.player.position, old_rotation as f32, self.player.rotation as f32);
             proto_pipeline.set_camera(self.camera_position, self.camera_position);
         }
 
@@ -367,7 +370,7 @@ pub fn start_physics<const A: usize, const P: usize>(
     // function?
     // Run the ticking function in a loop forever.
     let mut ticker = TickState::<1337, 67, _, _>::new(&render_pipeline, physics_events);
-    ticker.player.velocity.x = -44000;
+    ticker.player.velocity.x = -30300.0;
 
     // Run the ticking function, 240 per second if doable.
 
