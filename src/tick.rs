@@ -324,23 +324,28 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             let old_rotation = self.player.rotation;
 
             // Updating position
-            // TODO: Store player velocity as a float so adjusting it according to delta_time is
-            // sensible
-            self.player.velocity.x += 4800.0 * delta_time;
+            let velocity_mod = match self.player_control {
+                events::PlayerControl {main_forward: true, ..} => GameVector {
+                    x: f64::sin(self.player.rotation) * 69000.0,
+                    y: f64::cos(self.player.rotation) * -69000.0,
+                },
+                _ => GameVector::new(0.0, 0.0),
+            };
+
+            self.player.velocity += velocity_mod / 2.0 * delta_time;
 
             let casted_velocity = GameVector {
                 x: (self.player.velocity.x * delta_time) as i64,
                 y: (self.player.velocity.y * delta_time) as i64,
             };
-            eprintln!("BBBB {:?}", casted_velocity);
             self.player.position += casted_velocity;
 
-            self.player.velocity.x += 1000.0 * delta_time;
+            self.player.velocity += velocity_mod / 2.0 * delta_time;
 
             // Updating rotation
             let rotation_mod = match self.player_control {
-                events::PlayerControl {rotate_left: true, rotate_right: false, ..} => -12.0,
-                events::PlayerControl {rotate_left: false, rotate_right: true, ..} => 12.0,
+                events::PlayerControl {rotate_left: true, rotate_right: false, ..} => -7.0,
+                events::PlayerControl {rotate_left: false, rotate_right: true, ..} => 7.0,
                 _ => 0.0,
             };
             self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
@@ -370,7 +375,6 @@ pub fn start_physics<const A: usize, const P: usize>(
     // function?
     // Run the ticking function in a loop forever.
     let mut ticker = TickState::<1337, 67, _, _>::new(&render_pipeline, physics_events);
-    ticker.player.velocity.x = -30300.0;
 
     // Run the ticking function, 240 per second if doable.
 
