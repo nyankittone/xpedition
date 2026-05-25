@@ -16,10 +16,10 @@ use crate::render::{DisplayState, Keysymmer, XError};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlayerControl {
-    main_forward: bool,
-    big_forward: bool,
-    rotate_left: bool,
-    rotate_right: bool,
+    pub main_forward: bool,
+    pub big_forward: bool,
+    pub rotate_left: bool,
+    pub rotate_right: bool,
 }
 
 impl PlayerControl {
@@ -151,7 +151,7 @@ pub fn listen<const A: usize, const P: usize>(
             Event::ClientMessage(ClientMessageEvent {
                 format: 32, data, ..
             }) => {
-                if data.as_data32()[0] == wm_delete_window {
+                if data.as_data32()[0] == display_state.wm_delete_window {
                     send_physics.send(PhysicsEvent::Stop).unwrap();
                     send_render.send(RenderEvent::CloseWindow).unwrap();
                     break;

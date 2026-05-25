@@ -274,6 +274,7 @@ struct TickState<'a, const S: usize, const Q: usize, const A: usize, const P: us
     pipeline: &'a sync::Mutex<rp::ReadRenderInfo<A, P>>,
     physics_events: mpsc::Receiver<events::PhysicsEvent>,
     player: Player,
+    player_control: events::PlayerControl,
     camera_position: GameVector<i64>,
 }
 
@@ -287,6 +288,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             pipeline,
             physics_events,
             player: Player::new(),
+            player_control: events::PlayerControl::new(),
             camera_position: GameVector::new(0, 0),
         }
     }
@@ -300,6 +302,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
                 },
                 pe::PlayerControl(control) => {
                     eprintln!("{:?}", control);
+                    self.player_control = control;
                 },
                 _ => (),
             }
@@ -320,6 +323,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             let old_position = self.player.position;
             let old_rotation = self.player.rotation;
 
+            // Updating position
             self.player.velocity.x += 5;
 
             let modification = self.player.velocity * ((delta_time * 1000000.0) as i32) / 1000000;
@@ -330,7 +334,15 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
 
             self.player.velocity.x += 5;
 
-            self.player.rotation += 1.0 * delta_time as f32;
+            // Updating rotation
+            let rotation_mod = match self.player_control {
+                events::PlayerControl {rotate_left: true, rotate_right: false, ..} => -12.0,
+                events::PlayerControl {rotate_left: false, rotate_right: true, ..} => 12.0,
+                _ => 0.0,
+            };
+            self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
+            self.player.rotation += self.player.rotation_velocity as f32 * (delta_time as f32);
+            self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
 
             proto_pipeline.set_player(old_position, self.player.position, old_rotation, self.player.rotation);
             proto_pipeline.set_camera(self.camera_position, self.camera_position);

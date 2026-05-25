@@ -71,7 +71,7 @@ pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
             }
         });
 
-        let _ = events::listen(&physics_send, &render_send, renderer.gimme_display(), &keysymmer, renderer.gimme_wm_delete_window());
+        let _ = events::listen(&physics_send, &render_send, &keysymmer, &renderer);
 
         physics_handle.join().unwrap();
         render_handle.join().unwrap();
