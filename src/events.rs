@@ -66,7 +66,10 @@ fn update_player_control(control: &mut PlayerControl, sym: Keysym, with: bool) -
         _ => return false,
     };
 
+    eprintln!("I wanna set with {}, current val is {}", with, *write_to);
+
     if *write_to == with {
+        eprintln!("Deas this EVER print?");
         return false;
     }
 
@@ -86,8 +89,10 @@ pub fn listen(
     loop {
         match display.wait_for_event()? {
             Event::KeyPress(event) => {
+                eprintln!("Got a KeyPress.");
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
                 if update_player_control(&mut player_control, sym, true) {
+                    eprintln!("Meow!\n");
                     send_physics
                         .send(PhysicsEvent::PlayerControl(player_control))
                         .unwrap();
@@ -101,6 +106,7 @@ pub fn listen(
                 }
             }
             Event::KeyRelease(event) => {
+                eprintln!("Got a KeyRelease.");
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
                 if update_player_control(&mut player_control, sym, false) {
                     send_physics
