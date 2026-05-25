@@ -220,16 +220,16 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
 }
 
 pub struct DisplayState<'a, const A: usize, const P: usize> {
-    display: RustConnection,
+    pub display: RustConnection,
     pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>,
-    gc: u32,
-    player_gc: u32,
-    player_pixel_normal: u32,
-    player_pixel_boost: u32,
-    player_pixel_big_boost: u32,
-    font: u32,
-    window: u32,
-    wm_delete_window: u32,
+    pub gc: u32,
+    pub player_gc: u32,
+    pub player_pixel_normal: u32,
+    pub player_pixel_boost: u32,
+    pub player_pixel_big_boost: u32,
+    pub font: u32,
+    pub window: u32,
+    pub wm_delete_window: u32,
 }
 
 const WIDTH: u16 = 800;
@@ -281,7 +281,12 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             screen.root_visual,
             &CreateWindowAux::default()
                 .background_pixel(screen.black_pixel)
-                .event_mask(EventMask::EXPOSURE | EventMask::KEY_PRESS | EventMask::KEY_RELEASE),
+                .event_mask(
+                    EventMask::EXPOSURE
+                        | EventMask::KEY_PRESS
+                        | EventMask::KEY_RELEASE
+                        | EventMask::FOCUS_CHANGE,
+                ),
         )?;
 
         // Try to load the font lol
@@ -454,18 +459,15 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             },
         ];
 
-        let transformed_points = POINTS
-            .map(|input| Point {
-                x: ((f64::sin(input.angle + player.end_rotation as f64) * (input.length as f64))
-                    as i64
-                    + (WIDTH as i64 / 2)
-                    + (player.end_position.x / SCALE_FACTOR)) as i16,
-                y: ((f64::cos(input.angle + player.end_rotation as f64) * (input.length as f64))
-                    as i64
-                    * -1
-                    + (HEIGHT as i64 / 2)
-                    + (player.end_position.y / SCALE_FACTOR)) as i16,
-            });
+        let transformed_points = POINTS.map(|input| Point {
+            x: ((f64::sin(input.angle + player.end_rotation as f64) * (input.length as f64)) as i64
+                + (WIDTH as i64 / 2)
+                + (player.end_position.x / SCALE_FACTOR)) as i16,
+            y: ((f64::cos(input.angle + player.end_rotation as f64) * (input.length as f64)) as i64
+                * -1
+                + (HEIGHT as i64 / 2)
+                + (player.end_position.y / SCALE_FACTOR)) as i16,
+        });
 
         self.display.poly_line(
             CoordMode::ORIGIN,

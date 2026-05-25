@@ -12,7 +12,7 @@ use x11rb::protocol::xproto::*;
 use x11rb::rust_connection::RustConnection;
 use xkeysym::{Keysym, key};
 
-use crate::render::{Keysymmer, XError};
+use crate::render::{DisplayState, Keysymmer, XError};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlayerControl {
@@ -77,17 +77,23 @@ fn update_player_control(control: &mut PlayerControl, sym: Keysym, with: bool) -
     true
 }
 
-pub fn listen(
+pub fn listen<const A: usize, const P: usize>(
     send_physics: &mpsc::Sender<PhysicsEvent>,
     send_render: &mpsc::Sender<RenderEvent>,
-    display: &impl Connection,
     keysymmer: &Keysymmer,
-    wm_delete_window: Atom,
+    display_state: &DisplayState<A, P>,
 ) -> Result<(), XError> {
     let mut player_control = PlayerControl::new();
 
     loop {
-        match display.wait_for_event()? {
+        match display_state.display.wait_for_event()? {
+            Event::FocusOut(_) => {
+                // When we lose window focus, reset all player controls to their default (off) state
+                player_control = PlayerControl::new();
+                send_physics
+                    .send(PhysicsEvent::PlayerControl(player_control))
+                    .unwrap();
+            }
             Event::KeyPress(event) => {
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
                 if update_player_control(&mut player_control, sym, true) {
@@ -126,7 +132,7 @@ pub fn listen(
                     continue;
                 }
 
-                let current_keeb_state = display.query_keymap()?.reply()?;
+                let current_keeb_state = display_state.display.query_keymap()?.reply()?;
                 if current_keeb_state.keys[(event.detail / 8) as usize]
                     & (1u8 << (event.detail % 8))
                     > 0
