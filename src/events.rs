@@ -93,7 +93,7 @@ pub fn listen<const A: usize, const P: usize>(
                 send_physics
                     .send(PhysicsEvent::PlayerControl(player_control))
                     .unwrap();
-            }
+            },
             Event::KeyPress(event) => {
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
                 if update_player_control(&mut player_control, sym, true) {
@@ -109,7 +109,7 @@ pub fn listen<const A: usize, const P: usize>(
                         .send(PhysicsEvent::PlayerSet(PlayerSet::Reverse))
                         .unwrap();
                 }
-            }
+            },
             Event::KeyRelease(event) => {
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
                 // KeyRelease events are sent to us when a keypress is held and begins to repeat
@@ -147,7 +147,7 @@ pub fn listen<const A: usize, const P: usize>(
                         .send(PhysicsEvent::PlayerControl(player_control))
                         .unwrap();
                 }
-            }
+            },
             Event::ClientMessage(ClientMessageEvent {
                 format: 32, data, ..
             }) => {
@@ -156,7 +156,7 @@ pub fn listen<const A: usize, const P: usize>(
                     send_render.send(RenderEvent::CloseWindow).unwrap();
                     break;
                 }
-            }
+            },
             _ => (),
         }
     }
