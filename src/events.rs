@@ -89,7 +89,6 @@ pub fn listen(
     loop {
         match display.wait_for_event()? {
             Event::KeyPress(event) => {
-                eprintln!("Got a KeyPress.");
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
                 if update_player_control(&mut player_control, sym, true) {
                     eprintln!("Meow!\n");
@@ -106,8 +105,30 @@ pub fn listen(
                 }
             }
             Event::KeyRelease(event) => {
-                eprintln!("Got a KeyRelease.");
                 let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
+                // KeyRelease events are sent to us when a keypress is held and begins to repeat
+                // itself. To know if the key is ACTUALLY released, we query the REAL keyboard state
+                // with effectively XQueryKeymap. If still held down and our window's still in
+                // focus, we won't try to send a PhysicsEvent.
+                // TODO: Again, I need to create a system for mapping controls. Bleh.
+
+                if let (key::W
+                | key::w
+                | key::S
+                | key::s
+                | key::A
+                | key::a
+                | key::D
+                | key::d
+                | key::space) = sym.raw()
+                {
+                } else {
+                    continue;
+                }
+
+                let current_keeb_state = display.query_keymap()?.reply()?;
+                eprintln!("mew {}", current_keeb_state.keys[(event.detail / 8) as usize] & (1u8 << (event.detail % 8)) > 0);
+
                 if update_player_control(&mut player_control, sym, false) {
                     send_physics
                         .send(PhysicsEvent::PlayerControl(player_control))

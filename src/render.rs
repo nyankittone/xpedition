@@ -162,7 +162,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
                 &args.assets_dir,
                 errors::ResourceError::from(my_fonts.as_path()),
             );
-            warn!(error, "failed to check if font dirctory exists");
+            warn!(error, "failed to check if font directory exists");
             display.open_font(font_id, b"fixed")?;
             return Ok(false);
         }
