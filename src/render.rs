@@ -15,9 +15,9 @@ use x11rb::protocol::xproto::*;
 use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
 
-use crate::render_pipeline as rp;
 use crate::argparse::Args;
 use crate::math_types::GameVector;
+use crate::render_pipeline as rp;
 use crate::*;
 use xkeysym::KeyCode;
 
@@ -427,11 +427,14 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
     // consistent in code.
     pub fn render_player(&self, player: &render_pipeline::PlayerRender) -> Result<(), XError> {
         // TODO: See if we get any significant performance boost by caching the booster color state.
-        self.display.change_gc(self.player_gc, &ChangeGCAux::default().foreground(match player.booster_state {
-            rp::BoosterState::None => self.player_pixel_normal,
-            rp::BoosterState::MainBooster => self.player_pixel_boost,
-            rp::BoosterState::TurboBooster => self.player_pixel_big_boost,
-        }))?;
+        self.display.change_gc(
+            self.player_gc,
+            &ChangeGCAux::default().foreground(match player.booster_state {
+                rp::BoosterState::None => self.player_pixel_normal,
+                rp::BoosterState::MainBooster => self.player_pixel_boost,
+                rp::BoosterState::TurboBooster => self.player_pixel_big_boost,
+            }),
+        )?;
 
         const fn degrees_to_radians(degrees: f64) -> f64 {
             degrees / 180.0 * f64::consts::PI
