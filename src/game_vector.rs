@@ -1,3 +1,4 @@
+use core::f64;
 use std::{fmt::Display, ops::*};
 use x11rb::protocol::xproto::Point;
 
@@ -128,6 +129,20 @@ impl DerefMut for Radians {
 impl Display for Radians {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(formatter, "{}", self.0)
+    }
+}
+
+impl Radians {
+    pub const fn from_degrees(input: f64) -> Self {
+        Self(input * f64::consts::PI / 180.0)
+    }
+
+    pub const fn to_degrees_float(radians: f64) -> f64 {
+        radians * 180.0 / f64::consts::PI
+    }
+
+    pub const fn to_degrees(self) -> f64 {
+        self.0 * 180.0 / f64::consts::PI
     }
 }
 
