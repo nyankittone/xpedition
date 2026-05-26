@@ -1,4 +1,4 @@
-use std::ops::*;
+use std::{fmt::Display, ops::*};
 use x11rb::protocol::xproto::Point;
 
 // things to overload:
@@ -94,4 +94,40 @@ two_overload_assign!(AddAssign, Add, add_assign, +);
 two_overload_assign!(SubAssign, Sub, sub_assign, -);
 two_overload_assign!(MulAssign, Mul, mul_assign, *);
 two_overload_assign!(DivAssign, Div, div_assign, /);
+
+// Data type for storing Radians in a more intelligent way
+#[derive(Copy, Clone)]
+pub struct Radians(f64);
+
+impl From<f64> for Radians {
+    fn from(value: f64) -> Self {
+        Radians(value)
+    }
+}
+
+impl From<Radians> for f64 {
+    fn from(value: Radians) -> Self {
+        value.0
+    }
+}
+
+impl Deref for Radians {
+    type Target = f64;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Radians {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Display for Radians {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}", self.0)
+    }
+}
 
