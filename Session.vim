@@ -10,23 +10,27 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
 endif
 let s:shortmess_save = &shortmess
 set shortmess+=aoO
-badd +65 src/main.rs
-badd +400 src/render.rs
-badd +286 src/tick.rs
+badd +396 src/render.rs
+badd +113 src/events.rs
+badd +59 src/main.rs
+badd +71 src/render_entities.rs
+badd +25 src/entities.rs
+badd +1 src/render_pipeline.rs
+badd +362 src/tick.rs
+badd +9057 term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
+badd +23 term://~/Projects/Programming/xpedition//69100:/usr/bin/bash
 badd +1 src/physics.rs
-badd +63 src/entities.rs
-badd +10 src/lib.rs
-badd +23 term://~/Projects/Programming/xpedition//889321:/usr/bin/bash
-badd +32 src/render_entities.rs
-badd +62 src/render_pipeline.rs
-badd +9018 term://~/Projects/Programming/xpedition//959153:/usr/bin/bash
+badd +9 src/lib.rs
+badd +103 src/math_types.rs
 argglobal
 %argdel
-$argadd src/main.rs
+$argadd src/render.rs
 set stal=2
 tabnew +setlocal\ bufhidden=wipe
+tabnew +setlocal\ bufhidden=wipe
+tabnew +setlocal\ bufhidden=wipe
 tabrewind
-edit src/render_pipeline.rs
+edit src/render.rs
 let s:save_splitbelow = &splitbelow
 let s:save_splitright = &splitright
 set splitbelow splitright
@@ -48,11 +52,34 @@ set winheight=1
 set winminwidth=0
 set winwidth=1
 exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
-exe '2resize ' . ((&lines * 17 + 29) / 59)
+exe '2resize ' . ((&lines * 44 + 29) / 59)
 exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
-exe '3resize ' . ((&lines * 38 + 29) / 59)
+exe '3resize ' . ((&lines * 11 + 29) / 59)
 exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
 argglobal
+balt src/main.rs
+setlocal foldmethod=manual
+setlocal foldexpr=0
+setlocal foldmarker={{{,}}}
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldenable
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 31 - ((30 * winheight(0) + 28) / 56)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 31
+normal! 0
+wincmd w
+argglobal
+if bufexists(fnamemodify("term://~/Projects/Programming/xpedition//33189:/usr/bin/bash", ":p")) | buffer term://~/Projects/Programming/xpedition//33189:/usr/bin/bash | else | edit term://~/Projects/Programming/xpedition//33189:/usr/bin/bash | endif
+if &buftype ==# 'terminal'
+  silent file term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
+endif
 balt src/render.rs
 setlocal foldmethod=manual
 setlocal foldexpr=0
@@ -62,72 +89,20 @@ setlocal foldlevel=0
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 63 - ((32 * winheight(0) + 28) / 56)
+let s:l = 9057 - ((43 * winheight(0) + 22) / 44)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 63
-normal! 023|
-lcd ~/Projects/Programming/xpedition
-wincmd w
-argglobal
-if bufexists(fnamemodify("term://~/Projects/Programming/xpedition//959153:/usr/bin/bash", ":p")) | buffer term://~/Projects/Programming/xpedition//959153:/usr/bin/bash | else | edit term://~/Projects/Programming/xpedition//959153:/usr/bin/bash | endif
-if &buftype ==# 'terminal'
-  silent file term://~/Projects/Programming/xpedition//959153:/usr/bin/bash
-endif
-balt ~/Projects/Programming/xpedition/src/render_pipeline.rs
-setlocal foldmethod=manual
-setlocal foldexpr=0
-setlocal foldmarker={{{,}}}
-setlocal foldignore=#
-setlocal foldlevel=0
-setlocal foldminlines=1
-setlocal foldnestmax=20
-setlocal foldenable
-let s:l = 9018 - ((16 * winheight(0) + 8) / 17)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 9018
-normal! 03|
-lcd ~/Projects/Programming/xpedition
-wincmd w
-argglobal
-if bufexists(fnamemodify("~/Projects/Programming/xpedition/src/render.rs", ":p")) | buffer ~/Projects/Programming/xpedition/src/render.rs | else | edit ~/Projects/Programming/xpedition/src/render.rs | endif
-if &buftype ==# 'terminal'
-  silent file ~/Projects/Programming/xpedition/src/render.rs
-endif
-balt term://~/Projects/Programming/xpedition//959153:/usr/bin/bash
-setlocal foldmethod=manual
-setlocal foldexpr=0
-setlocal foldmarker={{{,}}}
-setlocal foldignore=#
-setlocal foldlevel=0
-setlocal foldminlines=1
-setlocal foldnestmax=20
-setlocal foldenable
-silent! normal! zE
-let &fdl = &fdl
-let s:l = 398 - ((15 * winheight(0) + 19) / 38)
-if s:l < 1 | let s:l = 1 | endif
-keepjumps exe s:l
-normal! zt
-keepjumps 398
+keepjumps 9057
 normal! 0
 lcd ~/Projects/Programming/xpedition
 wincmd w
-2wincmd w
-exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
-exe '2resize ' . ((&lines * 17 + 29) / 59)
-exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
-exe '3resize ' . ((&lines * 38 + 29) / 59)
-exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
-tabnext
-edit ~/Projects/Programming/xpedition/src/entities.rs
 argglobal
-balt term://~/Projects/Programming/xpedition//889321:/usr/bin/bash
+if bufexists(fnamemodify("~/Projects/Programming/xpedition/src/render_pipeline.rs", ":p")) | buffer ~/Projects/Programming/xpedition/src/render_pipeline.rs | else | edit ~/Projects/Programming/xpedition/src/render_pipeline.rs | endif
+if &buftype ==# 'terminal'
+  silent file ~/Projects/Programming/xpedition/src/render_pipeline.rs
+endif
+balt term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
 setlocal foldmethod=manual
 setlocal foldexpr=0
 setlocal foldmarker={{{,}}}
@@ -138,14 +113,244 @@ setlocal foldnestmax=20
 setlocal foldenable
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 63 - ((48 * winheight(0) + 28) / 56)
+let s:l = 2 - ((1 * winheight(0) + 5) / 11)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 63
-normal! 022|
+keepjumps 2
+normal! 0
 lcd ~/Projects/Programming/xpedition
-tabnext 1
+wincmd w
+exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
+exe '2resize ' . ((&lines * 44 + 29) / 59)
+exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
+exe '3resize ' . ((&lines * 11 + 29) / 59)
+exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
+tabnext
+edit ~/Projects/Programming/xpedition/src/tick.rs
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+vsplit
+1wincmd h
+wincmd w
+wincmd _ | wincmd |
+split
+1wincmd k
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
+exe '2resize ' . ((&lines * 39 + 29) / 59)
+exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
+exe '3resize ' . ((&lines * 16 + 29) / 59)
+exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
+argglobal
+balt ~/Projects/Programming/xpedition/src/entities.rs
+setlocal foldmethod=manual
+setlocal foldexpr=0
+setlocal foldmarker={{{,}}}
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldenable
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 376 - ((42 * winheight(0) + 28) / 56)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 376
+normal! 010|
+lcd ~/Projects/Programming/xpedition
+wincmd w
+argglobal
+if bufexists(fnamemodify("~/Projects/Programming/xpedition/src/entities.rs", ":p")) | buffer ~/Projects/Programming/xpedition/src/entities.rs | else | edit ~/Projects/Programming/xpedition/src/entities.rs | endif
+if &buftype ==# 'terminal'
+  silent file ~/Projects/Programming/xpedition/src/entities.rs
+endif
+setlocal foldmethod=manual
+setlocal foldexpr=0
+setlocal foldmarker={{{,}}}
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldenable
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 25 - ((24 * winheight(0) + 19) / 39)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 25
+normal! 034|
+lcd ~/Projects/Programming/xpedition
+wincmd w
+argglobal
+if bufexists(fnamemodify("term://~/Projects/Programming/xpedition//33189:/usr/bin/bash", ":p")) | buffer term://~/Projects/Programming/xpedition//33189:/usr/bin/bash | else | edit term://~/Projects/Programming/xpedition//33189:/usr/bin/bash | endif
+if &buftype ==# 'terminal'
+  silent file term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
+endif
+balt ~/Projects/Programming/xpedition/src/events.rs
+setlocal foldmethod=manual
+setlocal foldexpr=0
+setlocal foldmarker={{{,}}}
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldenable
+let s:l = 9057 - ((15 * winheight(0) + 8) / 16)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 9057
+normal! 03|
+lcd ~/Projects/Programming/xpedition
+wincmd w
+exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
+exe '2resize ' . ((&lines * 39 + 29) / 59)
+exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
+exe '3resize ' . ((&lines * 16 + 29) / 59)
+exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
+tabnext
+edit ~/Projects/Programming/xpedition/src/math_types.rs
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+vsplit
+1wincmd h
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
+exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
+argglobal
+balt ~/Projects/Programming/xpedition/src/lib.rs
+setlocal foldmethod=manual
+setlocal foldexpr=0
+setlocal foldmarker={{{,}}}
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldenable
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 103 - ((18 * winheight(0) + 28) / 56)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 103
+normal! 05|
+lcd ~/Projects/Programming/xpedition
+wincmd w
+argglobal
+if bufexists(fnamemodify("term://~/Projects/Programming/xpedition//33189:/usr/bin/bash", ":p")) | buffer term://~/Projects/Programming/xpedition//33189:/usr/bin/bash | else | edit term://~/Projects/Programming/xpedition//33189:/usr/bin/bash | endif
+if &buftype ==# 'terminal'
+  silent file term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
+endif
+setlocal foldmethod=manual
+setlocal foldexpr=0
+setlocal foldmarker={{{,}}}
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldenable
+let s:l = 9057 - ((55 * winheight(0) + 28) / 56)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 9057
+normal! 0
+lcd ~/Projects/Programming/xpedition
+wincmd w
+exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
+exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
+tabnext
+edit ~/Projects/Programming/xpedition/src/lib.rs
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+vsplit
+1wincmd h
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
+exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
+argglobal
+balt ~/Projects/Programming/xpedition/src/main.rs
+setlocal foldmethod=manual
+setlocal foldexpr=0
+setlocal foldmarker={{{,}}}
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldenable
+silent! normal! zE
+let &fdl = &fdl
+let s:l = 9 - ((8 * winheight(0) + 28) / 56)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 9
+normal! 015|
+lcd ~/Projects/Programming/xpedition
+wincmd w
+argglobal
+if bufexists(fnamemodify("term://~/Projects/Programming/xpedition//33189:/usr/bin/bash", ":p")) | buffer term://~/Projects/Programming/xpedition//33189:/usr/bin/bash | else | edit term://~/Projects/Programming/xpedition//33189:/usr/bin/bash | endif
+if &buftype ==# 'terminal'
+  silent file term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
+endif
+balt ~/Projects/Programming/xpedition/src/main.rs
+setlocal foldmethod=manual
+setlocal foldexpr=0
+setlocal foldmarker={{{,}}}
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldenable
+let s:l = 1 - ((0 * winheight(0) + 28) / 56)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 1
+normal! 0
+lcd ~/Projects/Programming/xpedition
+wincmd w
+exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
+exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
+tabnext 2
 set stal=1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
