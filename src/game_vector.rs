@@ -189,10 +189,12 @@ radians_overload!(Add, add, +);
 radians_overload!(Sub, sub, -);
 radians_overload!(Mul, mul, *);
 radians_overload!(Div, div, /);
+radians_overload!(Rem, rem, %);
 radians_assign_overload!(AddAssign, add_assign, +=);
 radians_assign_overload!(SubAssign, sub_assign, -=);
 radians_assign_overload!(MulAssign, mul_assign, *=);
 radians_assign_overload!(DivAssign, div_assign, /=);
+radians_assign_overload!(RemAssign, rem_assign, %=);
 
 impl Radians {
     pub const fn from_degrees(input: f64) -> Self {
