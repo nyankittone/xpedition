@@ -1,4 +1,4 @@
-use crate::game_vector::*;
+use crate::math_types::*;
 use crate::render_entities;
 use std::mem::MaybeUninit;
 use std::clone::Clone;

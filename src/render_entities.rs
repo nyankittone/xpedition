@@ -2,7 +2,7 @@
 //! used in the game's state.
 
 use crate::entities;
-use crate::game_vector::*;
+use crate::math_types::*;
 
 #[repr(u16)]
 #[derive(Copy, Clone)]

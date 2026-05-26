@@ -16,7 +16,7 @@ use x11rb::rust_connection::RustConnection;
 use x11rb::wrapper::ConnectionExt as _;
 
 use crate::argparse::Args;
-use crate::game_vector::GameVector;
+use crate::math_types::GameVector;
 use crate::*;
 use xkeysym::KeyCode;
 

@@ -8,7 +8,7 @@ use std::time;
 
 use crate::entities::*;
 use crate::events;
-use crate::game_vector::*;
+use crate::math_types::*;
 use crate::render_pipeline as rp;
 
 pub struct EntityPoolAllocation<const S: usize, const Q: usize> {

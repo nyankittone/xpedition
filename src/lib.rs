@@ -1,4 +1,4 @@
-pub mod game_vector;
+pub mod math_types;
 pub mod physics;
 pub mod argparse;
 pub mod errors;
