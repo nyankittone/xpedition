@@ -339,8 +339,8 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     let old_rotation = state.player.rotation;
 
     // I might have to move these outside of this function and have them be global constants.
-    const MAIN_BOOSTER_ACCELERATION: f64 = 69000.0;
-    const TURBO_BOOSTER_ACCELERATION: f64 = 400000.0;
+    const MAIN_BOOSTER_ACCELERATION: f64 = 80000.0;
+    const TURBO_BOOSTER_ACCELERATION: f64 = 500000.0;
 
     const STATIC_DECELERATION: f64 = 120.0;
     const DYNAMIC_DECELERATION_FACTOR: f64 = 0.07;
