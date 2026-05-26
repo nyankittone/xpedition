@@ -77,11 +77,10 @@ fn update_player_control(control: &mut PlayerControl, sym: Keysym, with: bool) -
     true
 }
 
-pub fn listen<const A: usize, const P: usize>(
+pub fn listen(
     send_physics: &mpsc::Sender<PhysicsEvent>,
     send_render: &mpsc::Sender<RenderEvent>,
-    keysymmer: &Keysymmer,
-    display_state: &DisplayState<A, P>,
+    display_state: &DisplayState,
 ) -> Result<(), XError> {
     let mut player_control = PlayerControl::new();
 
@@ -95,7 +94,7 @@ pub fn listen<const A: usize, const P: usize>(
                     .unwrap();
             },
             Event::KeyPress(event) => {
-                let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
+                let sym = display_state.keysymmer.code_to_sym(event.detail, 0).unwrap();
                 if update_player_control(&mut player_control, sym, true) {
                     eprintln!("Meow!\n");
                     send_physics
@@ -111,7 +110,7 @@ pub fn listen<const A: usize, const P: usize>(
                 }
             },
             Event::KeyRelease(event) => {
-                let sym = keysymmer.code_to_sym(event.detail, 0).unwrap();
+                let sym = display_state.keysymmer.code_to_sym(event.detail, 0).unwrap();
                 // KeyRelease events are sent to us when a keypress is held and begins to repeat
                 // itself. To know if the key is ACTUALLY released, we query the REAL keyboard state
                 // with effectively XQueryKeymap. If still held down and our window's still in

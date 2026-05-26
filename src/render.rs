@@ -220,9 +220,9 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     Ok(false)
 }
 
-pub struct DisplayState<'a, const A: usize, const P: usize> {
+pub struct DisplayState {
     pub display: RustConnection,
-    pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>,
+    pub keysymmer: Keysymmer,
     pub gc: u32,
     pub player_gc: u32,
     pub player_pixel_normal: u32,
@@ -240,11 +240,8 @@ const MID_X: i32 = WIDTH as i32 / 2;
 const MID_Y: i32 = HEIGHT as i32 / 2;
 const SCALE_FACTOR: i64 = 240;
 
-impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
-    pub fn new(
-        args: &Args,
-        pipeline: &'a sync::Mutex<render_pipeline::ReadRenderInfo<A, P>>,
-    ) -> Result<(Self, Keysymmer), XError> {
+impl DisplayState {
+    pub fn new(args: &Args) -> Result<Self, XError> {
         let (display, screen) = x11rb::connect(None)?;
         let screen = &display.setup().roots[screen];
 
@@ -355,21 +352,18 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
 
         display.flush()?;
 
-        Ok((
-            Self {
-                display,
-                pipeline,
-                gc,
-                player_gc,
-                player_pixel_normal,
-                player_pixel_boost,
-                player_pixel_big_boost,
-                font,
-                window,
-                wm_delete_window: delete_signal,
-            },
+        Ok(Self {
+            display,
+            gc,
+            player_gc,
+            player_pixel_normal,
+            player_pixel_boost,
+            player_pixel_big_boost,
+            font,
+            window,
+            wm_delete_window: delete_signal,
             keysymmer,
-        ))
+        })
     }
 
     pub fn gimme_display(&self) -> &RustConnection {
@@ -380,7 +374,11 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         self.wm_delete_window
     }
 
-    pub fn run(&self, render_events: mpsc::Receiver<events::RenderEvent>) -> Result<(), XError> {
+    pub fn start_renderer<const A: usize, const P: usize>(
+        &self,
+        pipeline: &sync::Mutex<rp::ReadRenderInfo<A, P>>,
+        render_events: mpsc::Receiver<events::RenderEvent>,
+    ) -> Result<(), XError> {
         // thread::sleep(time::Duration::from_secs(1)); // TODO: Remove this and fix panic.
         let mut debug_text_buffer = String::new();
 
@@ -396,8 +394,7 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             self.display.clear_area(true, self.window, 0, 0, 0, 0)?;
 
             let pipeline_copy = {
-                let handle = self
-                    .pipeline
+                let handle = pipeline
                     .lock()
                     .expect("FUCK FUCKING SHIT MY PIPE IS BROKEN AAA");
                 handle.clone()
@@ -465,10 +462,12 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
         ];
 
         let transformed_points = POINTS.map(|input| Point {
-            x: ((f64::sin(f64::from(input.angle) + player.end_rotation as f64) * (input.length as f64)) as i64
+            x: ((f64::sin(f64::from(input.angle) + player.end_rotation as f64)
+                * (input.length as f64)) as i64
                 + (WIDTH as i64 / 2)
                 + (player.end_position.x / SCALE_FACTOR)) as i16,
-            y: ((f64::cos(f64::from(input.angle) + player.end_rotation as f64) * (input.length as f64)) as i64
+            y: ((f64::cos(f64::from(input.angle) + player.end_rotation as f64)
+                * (input.length as f64)) as i64
                 * -1
                 + (HEIGHT as i64 / 2)
                 + (player.end_position.y / SCALE_FACTOR)) as i16,

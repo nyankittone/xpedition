@@ -57,21 +57,22 @@ fn oopsie(error: render::XError) -> ! {
 // this over time)
 
 pub fn start_game(args: &argparse::Args) -> Result<(), render::XError> {
-    let mut render_pipeline = sync::Mutex::new(render_pipeline::ReadRenderInfo::<128, 512>::new());
+    let render_pipeline = sync::Mutex::new(render_pipeline::ReadRenderInfo::<128, 512>::new());
     let (physics_send, physics_recv) = mpsc::channel::<events::PhysicsEvent>();
     let (render_send, render_recv) = mpsc::channel::<events::RenderEvent>();
-    let (mut renderer, keysymmer) = render::DisplayState::new(args, &render_pipeline)?;
+
+    let display_state = render::DisplayState::new(args)?;
 
     let mut error_from_scope: Option<render::XError> = None;
     thread::scope(|scope| {
         let physics_handle = scope.spawn(|| tick::start_physics(&render_pipeline, physics_recv));
         let render_handle = scope.spawn(|| {
-            if let Err(error) = renderer.run(render_recv) {
+            if let Err(error) = display_state.start_renderer(&render_pipeline, render_recv) {
                 error_from_scope = Some(error);
             }
         });
 
-        let _ = events::listen(&physics_send, &render_send, &keysymmer, &renderer);
+        let _ = events::listen(&physics_send, &render_send, &display_state);
 
         physics_handle.join().unwrap();
         render_handle.join().unwrap();
