@@ -94,7 +94,7 @@ two_overload_assign!(MulAssign, Mul, mul_assign, *);
 two_overload_assign!(DivAssign, Div, div_assign, /);
 
 // Data type for storing Radians in a more intelligent way
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Radians(f64);
 
 impl From<f64> for Radians {
@@ -251,3 +251,6 @@ impl Radians {
         self.0 * 180.0 / f64::consts::PI
     }
 }
+
+pub type UncappedRadians = f64;
+

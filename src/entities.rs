@@ -1,11 +1,11 @@
-use crate::game_vector::GameVector;
+use crate::game_vector;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Player {
-    pub position: GameVector<i64>,
-    pub rotation: f64,
-    pub velocity: GameVector<f64>,
-    pub rotation_velocity: f64,
+    pub position: game_vector::GameVector<i64>,
+    pub rotation: game_vector::Radians,
+    pub velocity: game_vector::GameVector<f64>,
+    pub rotation_velocity: game_vector::UncappedRadians,
     pub health_current: u32,
     pub health_max: u32,
     pub ammo_current: u32,
@@ -19,9 +19,9 @@ pub struct Player {
 impl Player {
     pub fn new() -> Self {
         Self {
-            position: GameVector::new(0, 0),
-            rotation: 0.0,
-            velocity: GameVector::new(0.0, 0.0),
+            position: game_vector::GameVector::new(0, 0),
+            rotation: game_vector::Radians::from(0.0),
+            velocity: game_vector::GameVector::new(0.0, 0.0),
             rotation_velocity: 0.0,
             health_current: 100,
             health_max: 100,
@@ -38,9 +38,9 @@ impl Player {
 // Having GameVector derive default might be a really bad idea long-term, but this is temporary.
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Asteroid {
-    position: GameVector<i64>,
+    position: game_vector::GameVector<i64>,
     rotation: f32,
-    velocity: GameVector<i32>,
+    velocity: game_vector::GameVector<i32>,
     health_current: u16,
     health_max: u16,
     scale: f32,
@@ -50,8 +50,8 @@ pub struct Asteroid {
 
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Projectile {
-    position: GameVector<i64>,
-    velocity: GameVector<i32>,
+    position: game_vector::GameVector<i64>,
+    velocity: game_vector::GameVector<i32>,
     color: u32,
 }
 

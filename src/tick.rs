@@ -1,10 +1,10 @@
+use crate::log;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem::MaybeUninit;
 use std::sync;
 use std::sync::mpsc;
 use std::thread;
 use std::time;
-use crate::log;
 
 use crate::entities::*;
 use crate::events;
@@ -299,11 +299,11 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             match event {
                 pe::Stop => {
                     return TickSignal::StopMe;
-                },
+                }
                 pe::PlayerControl(control) => {
                     eprintln!("{:?}", control);
                     self.player_control = control;
-                },
+                }
                 _ => (),
             }
         }
@@ -325,9 +325,11 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
 
             // Updating position
             let velocity_mod = match self.player_control {
-                events::PlayerControl {main_forward: true, ..} => GameVector {
-                    x: f64::sin(self.player.rotation) * 69000.0,
-                    y: f64::cos(self.player.rotation) * -69000.0,
+                events::PlayerControl {
+                    main_forward: true, ..
+                } => GameVector {
+                    x: f64::sin(self.player.rotation.into()) * 69000.0,
+                    y: f64::cos(self.player.rotation.into()) * -69000.0,
                 },
                 _ => GameVector::new(0.0, 0.0),
             };
@@ -344,15 +346,28 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
 
             // Updating rotation
             let rotation_mod = match self.player_control {
-                events::PlayerControl {rotate_left: true, rotate_right: false, ..} => -7.0,
-                events::PlayerControl {rotate_left: false, rotate_right: true, ..} => 7.0,
+                events::PlayerControl {
+                    rotate_left: true,
+                    rotate_right: false,
+                    ..
+                } => -7.0,
+                events::PlayerControl {
+                    rotate_left: false,
+                    rotate_right: true,
+                    ..
+                } => 7.0,
                 _ => 0.0,
             };
             self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
             self.player.rotation += self.player.rotation_velocity * delta_time;
             self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
 
-            proto_pipeline.set_player(old_position, self.player.position, old_rotation as f32, self.player.rotation as f32);
+            proto_pipeline.set_player(
+                old_position,
+                self.player.position,
+                f64::from(old_rotation) as f32,
+                f64::from(self.player.rotation) as f32,
+            );
             proto_pipeline.set_camera(self.camera_position, self.camera_position);
         }
 
