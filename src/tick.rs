@@ -341,24 +341,47 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     // I might have to move these outside of this function and have them be global constants.
     const MAIN_BOOSTER_ACCELERATION: f64 = 69000.0;
     const TURBO_BOOSTER_ACCELERATION: f64 = 400000.0;
+
+    const STATIC_DECELERATION: f64 = 120.0;
+    const DYNAMIC_DECELERATION_FACTOR: f64 = 0.07;
+
     const ROTATION_TORQUE: f64 = 7.0;
 
     // Updating position
     // TODO: HOLY SHIT BRAH LEARN HOW TO DO INTEGRALS FOR APPLYING ACCELERATION PERFECTLY YOU
     // DAUGHTER OF A BITCH
-    let mut velocity_mod = 0.0f64;
+    let mut speed_mod = 0.0f64;
     if state.player_control.big_forward {
-        velocity_mod += TURBO_BOOSTER_ACCELERATION;
+        speed_mod += TURBO_BOOSTER_ACCELERATION;
     }
 
     if state.player_control.main_forward {
-        velocity_mod += MAIN_BOOSTER_ACCELERATION;
+        speed_mod += MAIN_BOOSTER_ACCELERATION;
     }
 
-    let velocity_mod = GameVector {
-        x: f64::sin(state.player.rotation.into()) * velocity_mod,
-        y: f64::cos(state.player.rotation.into()) * -velocity_mod,
+    let deceleration = STATIC_DECELERATION + (state.player.velocity.x.powf(2.0) + state.player.velocity.y.powf(2.0)).sqrt() * DYNAMIC_DECELERATION_FACTOR;
+
+    // I will be real asf, these calculations are probably not fully correct. I was really
+    // sleep-deprived when writing this. TODO: Check accuracy of this BS.
+    let deceleration_vector = GameVector {
+        x: if state.player.velocity.x < 0.0 {
+            f64::min(0.0, state.player.velocity.x - deceleration * f64::sin(state.player.rotation.into()))
+        } else {
+            f64::max(0.0, state.player.velocity.x + deceleration * f64::sin(state.player.rotation.into()))
+        },
+        y: if state.player.velocity.y < 0.0 {
+            f64::min(0.0, state.player.velocity.y + deceleration * -f64::cos(state.player.rotation.into()))
+        } else {
+            f64::max(0.0, state.player.velocity.y - deceleration * -f64::cos(state.player.rotation.into()))
+        },
+
     };
+
+    let velocity_mod = GameVector {
+        x: f64::sin(state.player.rotation.into()) * speed_mod,
+        y: f64::cos(state.player.rotation.into()) * -speed_mod,
+    };
+    let velocity_mod = velocity_mod - deceleration_vector;
 
     state.player.velocity += velocity_mod / 2.0 * delta_time;
 
