@@ -234,6 +234,14 @@ impl RemAssign<Radians> for f64 {
     }
 }
 
+impl Neg for Radians {
+    type Output = Radians;
+
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
+    }
+}
+
 impl Radians {
     pub const fn from_degrees(input: f64) -> Self {
         Self((input * f64::consts::PI / 180.0) % f64::consts::TAU)
