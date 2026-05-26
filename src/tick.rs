@@ -293,6 +293,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
         }
     }
 
+
     fn tick(&mut self, delta_time: f64) -> TickSignal {
         for event in self.physics_events.try_iter() {
             use events::PhysicsEvent as pe;
@@ -319,62 +320,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
 
         // handle player-specific physics. This owuld make sense to move out to another function if
         // it grows in size.
-        {
-            let old_position = self.player.position;
-            let old_rotation = self.player.rotation;
-
-            // Updating position
-            let velocity_mod = match self.player_control {
-                events::PlayerControl {
-                    main_forward: true, ..
-                } => GameVector {
-                    x: f64::sin(self.player.rotation.into()) * 69000.0,
-                    y: f64::cos(self.player.rotation.into()) * -69000.0,
-                },
-                _ => GameVector::new(0.0, 0.0),
-            };
-
-            self.player.velocity += velocity_mod / 2.0 * delta_time;
-
-            let casted_velocity = GameVector {
-                x: (self.player.velocity.x * delta_time) as i64,
-                y: (self.player.velocity.y * delta_time) as i64,
-            };
-            self.player.position += casted_velocity;
-
-            self.player.velocity += velocity_mod / 2.0 * delta_time;
-
-            // Updating rotation
-            let rotation_mod = match self.player_control {
-                events::PlayerControl {
-                    rotate_left: true,
-                    rotate_right: false,
-                    ..
-                } => -7.0,
-                events::PlayerControl {
-                    rotate_left: false,
-                    rotate_right: true,
-                    ..
-                } => 7.0,
-                _ => 0.0,
-            };
-            self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
-            self.player.rotation += self.player.rotation_velocity * delta_time;
-            self.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
-
-            proto_pipeline.set_player(
-                old_position,
-                self.player.position,
-                f64::from(old_rotation) as f32,
-                f64::from(self.player.rotation) as f32,
-                match self.player_control {
-                    events::PlayerControl {big_forward: true, ..} => rp::BoosterState::TurboBooster,
-                    events::PlayerControl {main_forward: true, ..} => rp::BoosterState::MainBooster,
-                    _ => rp::BoosterState::None,
-                },
-            );
-            proto_pipeline.set_camera(self.camera_position, self.camera_position);
-        }
+        update_player(self, delta_time, &mut proto_pipeline);
 
         // push the worked-on pipeline so the renderer can now use it
         let mut pipeline_handle = self.pipeline.lock().expect("Pipeline fucking died!!!!!!");
@@ -383,6 +329,63 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
 
         TickSignal::Normal
     }
+}
+
+fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>(state: &mut TickState<S, Q, A, P>, delta_time: f64, proto_pipeline: &mut rp::WriteRenderInfo<A, P>) {
+    let old_position = state.player.position;
+    let old_rotation = state.player.rotation;
+
+    // Updating position
+    let velocity_mod = match state.player_control {
+        events::PlayerControl {
+            main_forward: true, ..
+        } => GameVector {
+            x: f64::sin(state.player.rotation.into()) * 69000.0,
+            y: f64::cos(state.player.rotation.into()) * -69000.0,
+        },
+        _ => GameVector::new(0.0, 0.0),
+    };
+
+    state.player.velocity += velocity_mod / 2.0 * delta_time;
+
+    let casted_velocity = GameVector {
+        x: (state.player.velocity.x * delta_time) as i64,
+        y: (state.player.velocity.y * delta_time) as i64,
+    };
+    state.player.position += casted_velocity;
+
+    state.player.velocity += velocity_mod / 2.0 * delta_time;
+
+    // Updating rotation
+    let rotation_mod = match state.player_control {
+        events::PlayerControl {
+            rotate_left: true,
+            rotate_right: false,
+            ..
+        } => -7.0,
+        events::PlayerControl {
+            rotate_left: false,
+            rotate_right: true,
+            ..
+        } => 7.0,
+        _ => 0.0,
+    };
+    state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
+    state.player.rotation += state.player.rotation_velocity * delta_time;
+    state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
+
+    proto_pipeline.set_player(
+        old_position,
+        state.player.position,
+        f64::from(old_rotation) as f32,
+        f64::from(state.player.rotation) as f32,
+        match state.player_control {
+            events::PlayerControl {big_forward: true, ..} => rp::BoosterState::TurboBooster,
+            events::PlayerControl {main_forward: true, ..} => rp::BoosterState::MainBooster,
+            _ => rp::BoosterState::None,
+        },
+    );
+    proto_pipeline.set_camera(state.camera_position, state.camera_position);
 }
 
 pub fn start_physics<const A: usize, const P: usize>(
