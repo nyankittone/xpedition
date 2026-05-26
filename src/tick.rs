@@ -293,7 +293,6 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
         }
     }
 
-
     fn tick(&mut self, delta_time: f64) -> TickSignal {
         for event in self.physics_events.try_iter() {
             use events::PhysicsEvent as pe;
@@ -331,19 +330,34 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
     }
 }
 
-fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>(state: &mut TickState<S, Q, A, P>, delta_time: f64, proto_pipeline: &mut rp::WriteRenderInfo<A, P>) {
+fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>(
+    state: &mut TickState<S, Q, A, P>,
+    delta_time: f64,
+    proto_pipeline: &mut rp::WriteRenderInfo<A, P>,
+) {
     let old_position = state.player.position;
     let old_rotation = state.player.rotation;
 
+    // I might have to move these outside of this function and have them be global constants.
+    const MAIN_BOOSTER_ACCELERATION: f64 = 69000.0;
+    const TURBO_BOOSTER_ACCELERATION: f64 = 400000.0;
+    const ROTATION_TORQUE: f64 = 7.0;
+
     // Updating position
-    let velocity_mod = match state.player_control {
-        events::PlayerControl {
-            main_forward: true, ..
-        } => GameVector {
-            x: f64::sin(state.player.rotation.into()) * 69000.0,
-            y: f64::cos(state.player.rotation.into()) * -69000.0,
-        },
-        _ => GameVector::new(0.0, 0.0),
+    // TODO: HOLY SHIT BRAH LEARN HOW TO DO INTEGRALS FOR APPLYING ACCELERATION PERFECTLY YOU
+    // DAUGHTER OF A BITCH
+    let mut velocity_mod = 0.0f64;
+    if state.player_control.big_forward {
+        velocity_mod += TURBO_BOOSTER_ACCELERATION;
+    }
+
+    if state.player_control.main_forward {
+        velocity_mod += MAIN_BOOSTER_ACCELERATION;
+    }
+
+    let velocity_mod = GameVector {
+        x: f64::sin(state.player.rotation.into()) * velocity_mod,
+        y: f64::cos(state.player.rotation.into()) * -velocity_mod,
     };
 
     state.player.velocity += velocity_mod / 2.0 * delta_time;
@@ -362,12 +376,12 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
             rotate_left: true,
             rotate_right: false,
             ..
-        } => -7.0,
+        } => -ROTATION_TORQUE,
         events::PlayerControl {
             rotate_left: false,
             rotate_right: true,
             ..
-        } => 7.0,
+        } => ROTATION_TORQUE,
         _ => 0.0,
     };
     state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
@@ -380,8 +394,12 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
         f64::from(old_rotation) as f32,
         f64::from(state.player.rotation) as f32,
         match state.player_control {
-            events::PlayerControl {big_forward: true, ..} => rp::BoosterState::TurboBooster,
-            events::PlayerControl {main_forward: true, ..} => rp::BoosterState::MainBooster,
+            events::PlayerControl {
+                big_forward: true, ..
+            } => rp::BoosterState::TurboBooster,
+            events::PlayerControl {
+                main_forward: true, ..
+            } => rp::BoosterState::MainBooster,
             _ => rp::BoosterState::None,
         },
     );
