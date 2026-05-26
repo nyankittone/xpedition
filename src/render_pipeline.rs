@@ -1,7 +1,13 @@
 use crate::math_types::*;
-use crate::render_entities;
 use std::mem::MaybeUninit;
 use std::clone::Clone;
+
+#[derive(Copy, Clone)]
+pub enum BoosterState {
+    None,
+    MainBooster,
+    TurboBooster,
+}
 
 pub struct AsteroidRender {
     pub start_position: GameVector<i64>,
@@ -17,6 +23,7 @@ pub struct PlayerRender {
     pub end_position: GameVector<i64>,
     pub start_rotation: f32,
     pub end_rotation: f32,
+    pub booster_state: BoosterState,
 }
 
 pub struct CameraRender {
@@ -87,12 +94,14 @@ impl<const A: usize, const P: usize> WriteRenderInfo<A, P> {
         end_position: GameVector<i64>,
         start_rotation: f32,
         end_rotation: f32,
+        booster_state: BoosterState,
     ) {
         self.0.player = Some(PlayerRender {
             start_position,
             end_position,
             start_rotation,
             end_rotation,
+            booster_state,
         });
     }
 

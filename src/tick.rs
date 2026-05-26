@@ -367,6 +367,11 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
                 self.player.position,
                 f64::from(old_rotation) as f32,
                 f64::from(self.player.rotation) as f32,
+                match self.player_control {
+                    events::PlayerControl {big_forward: true, ..} => rp::BoosterState::TurboBooster,
+                    events::PlayerControl {main_forward: true, ..} => rp::BoosterState::MainBooster,
+                    _ => rp::BoosterState::None,
+                },
             );
             proto_pipeline.set_camera(self.camera_position, self.camera_position);
         }
