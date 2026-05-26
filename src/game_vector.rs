@@ -20,10 +20,7 @@ pub struct GameVector<T> {
 
 impl<T> GameVector<T> {
     pub fn new(x: T, y: T) -> Self {
-        Self {
-            x,
-            y,
-        }
+        Self { x, y }
     }
 }
 
@@ -90,7 +87,7 @@ two_overload!(Add, add, +);
 two_overload!(Sub, sub, -);
 two_overload!(Mul, mul, *);
 two_overload!(Div, div, /); // TODO: is it a good idea to have a special case just for division to
-                            // support dividing by 0?
+// support dividing by 0?
 two_overload_assign!(AddAssign, Add, add_assign, +);
 two_overload_assign!(SubAssign, Sub, sub_assign, -);
 two_overload_assign!(MulAssign, Mul, mul_assign, *);
@@ -189,12 +186,53 @@ radians_overload!(Add, add, +);
 radians_overload!(Sub, sub, -);
 radians_overload!(Mul, mul, *);
 radians_overload!(Div, div, /);
-radians_overload!(Rem, rem, %);
 radians_assign_overload!(AddAssign, add_assign, +=);
 radians_assign_overload!(SubAssign, sub_assign, -=);
 radians_assign_overload!(MulAssign, mul_assign, *=);
 radians_assign_overload!(DivAssign, div_assign, /=);
-radians_assign_overload!(RemAssign, rem_assign, %=);
+// radians_assign_overload!(RemAssign, rem_assign, %=);
+
+impl Rem<f64> for Radians {
+    type Output = Self;
+
+    fn rem(self, rhs: f64) -> Self::Output {
+        Self(self.0 % rhs)
+    }
+}
+
+impl Rem for Radians {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Self(self.0 % rhs.0)
+    }
+}
+
+impl Rem<Radians> for f64 {
+    type Output = f64;
+
+    fn rem(self, rhs: Radians) -> Self::Output {
+        self % rhs.0
+    }
+}
+
+impl RemAssign<f64> for Radians {
+    fn rem_assign(&mut self, rhs: f64) {
+        self.0 %= rhs;
+    }
+}
+
+impl RemAssign for Radians {
+    fn rem_assign(&mut self, rhs: Self) {
+        self.0 %= rhs.0;
+    }
+}
+
+impl RemAssign<Radians> for f64 {
+    fn rem_assign(&mut self, rhs: Radians) {
+        *self %= rhs.0;
+    }
+}
 
 impl Radians {
     pub const fn from_degrees(input: f64) -> Self {
@@ -205,4 +243,3 @@ impl Radians {
         self.0 * 180.0 / f64::consts::PI
     }
 }
-
