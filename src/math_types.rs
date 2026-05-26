@@ -99,7 +99,7 @@ pub struct Radians(f64);
 
 impl From<f64> for Radians {
     fn from(value: f64) -> Self {
-        Radians(value)
+        Radians::from(value)
     }
 }
 
@@ -249,6 +249,10 @@ impl Radians {
 
     pub const fn to_degrees(self) -> f64 {
         self.0 * 180.0 / f64::consts::PI
+    }
+
+    pub const fn from(input: f64) -> Self {
+        Self(input % f64::consts::TAU)
     }
 }
 

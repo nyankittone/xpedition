@@ -436,43 +436,39 @@ impl<'a, const A: usize, const P: usize> DisplayState<'a, A, P> {
             }),
         )?;
 
-        const fn degrees_to_radians(degrees: f64) -> f64 {
-            degrees / 180.0 * f64::consts::PI
-        }
-
         struct LineAndAngle {
             length: i64,
-            angle: f64,
+            angle: math_types::Radians,
         }
 
         const POINTS: [LineAndAngle; 5] = [
             LineAndAngle {
                 length: 10,
-                angle: 0.0,
+                angle: math_types::Radians::from(0.0),
             },
             LineAndAngle {
                 length: 10,
-                angle: degrees_to_radians(130.0),
+                angle: math_types::Radians::from_degrees(130.0),
             },
             LineAndAngle {
                 length: 1,
-                angle: degrees_to_radians(180.0),
+                angle: math_types::Radians::from_degrees(180.0),
             },
             LineAndAngle {
                 length: 10,
-                angle: degrees_to_radians(230.0),
+                angle: math_types::Radians::from_degrees(230.0),
             },
             LineAndAngle {
                 length: 10,
-                angle: 0.0,
+                angle: math_types::Radians::from(0.0),
             },
         ];
 
         let transformed_points = POINTS.map(|input| Point {
-            x: ((f64::sin(input.angle + player.end_rotation as f64) * (input.length as f64)) as i64
+            x: ((f64::sin(f64::from(input.angle) + player.end_rotation as f64) * (input.length as f64)) as i64
                 + (WIDTH as i64 / 2)
                 + (player.end_position.x / SCALE_FACTOR)) as i16,
-            y: ((f64::cos(input.angle + player.end_rotation as f64) * (input.length as f64)) as i64
+            y: ((f64::cos(f64::from(input.angle) + player.end_rotation as f64) * (input.length as f64)) as i64
                 * -1
                 + (HEIGHT as i64 / 2)
                 + (player.end_position.y / SCALE_FACTOR)) as i16,
