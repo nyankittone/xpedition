@@ -133,29 +133,38 @@ impl Display for Radians {
 }
 
 // time to re-implement arithmetic for a float!!!!!! wowie zowie!
-impl Add<f64> for Radians {
-    type Output = Self;
+macro_rules! radians_overload {
+    ($trait:ident, $fn:ident, $op:tt) => {
+        impl $trait<f64> for Radians {
+        type Output = Self;
 
-    fn add(self, rhs: f64) -> Self::Output {
-        Self((self.0 + rhs) % f64::consts::TAU)
+        fn $fn(self, rhs: f64) -> Self::Output {
+            Self((self.0 $op rhs) % f64::consts::TAU)
+        }
     }
+
+    impl $trait for Radians {
+        type Output = Self;
+
+        fn $fn(self, rhs: Self) -> Self::Output {
+            Self((self.0 $op rhs.0) % f64::consts::TAU)
+        }
+    }
+
+    impl $trait<Radians> for f64 {
+        type Output = f64;
+
+        fn $fn(self, rhs: Radians) -> Self::Output {
+            self $op rhs.0
+        }
+    }
+    };
 }
 
-impl Add for Radians {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        self + rhs.0
-    }
-}
-
-impl Add<Radians> for f64 {
-    type Output = f64;
-
-    fn add(self, rhs: Radians) -> Self::Output {
-        self + rhs.0
-    }
-}
+radians_overload!(Add, add, +);
+radians_overload!(Sub, sub, -);
+radians_overload!(Mul, mul, *);
+radians_overload!(Div, div, /);
 
 impl Radians {
     pub const fn from_degrees(input: f64) -> Self {
