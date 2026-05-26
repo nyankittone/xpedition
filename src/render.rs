@@ -1,5 +1,4 @@
 extern crate x11rb;
-use crate::render::render_entities;
 
 use core::f64;
 use std::fmt::{self, Debug, Display, Write as _};
