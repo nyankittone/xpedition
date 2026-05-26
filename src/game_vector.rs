@@ -132,13 +132,34 @@ impl Display for Radians {
     }
 }
 
+// time to re-implement arithmetic for a float!!!!!! wowie zowie!
+impl Add<f64> for Radians {
+    type Output = Self;
+
+    fn add(self, rhs: f64) -> Self::Output {
+        Self((self.0 + rhs) % f64::consts::TAU)
+    }
+}
+
+impl Add for Radians {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        self + rhs.0
+    }
+}
+
+impl Add<Radians> for f64 {
+    type Output = f64;
+
+    fn add(self, rhs: Radians) -> Self::Output {
+        self + rhs.0
+    }
+}
+
 impl Radians {
     pub const fn from_degrees(input: f64) -> Self {
-        Self(input * f64::consts::PI / 180.0)
-    }
-
-    pub const fn to_degrees_float(radians: f64) -> f64 {
-        radians * 180.0 / f64::consts::PI
+        Self((input * f64::consts::PI / 180.0) % f64::consts::TAU)
     }
 
     pub const fn to_degrees(self) -> f64 {
