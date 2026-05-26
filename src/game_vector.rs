@@ -161,10 +161,38 @@ macro_rules! radians_overload {
     };
 }
 
+macro_rules! radians_assign_overload {
+    ($trait:ident, $fn:ident, $op:tt) => {
+        impl $trait<f64> for Radians {
+            fn $fn(&mut self, rhs: f64) {
+                self.0 $op rhs;
+                self.0 %= f64::consts::TAU;
+            }
+        }
+
+        impl $trait for Radians {
+            fn $fn(&mut self, rhs: Self) {
+                self.0 $op rhs.0;
+                self.0 %= f64::consts::TAU;
+            }
+        }
+
+        impl $trait<Radians> for f64 {
+            fn $fn(&mut self, rhs: Radians) {
+                *self $op rhs.0;
+            }
+        }
+    };
+}
+
 radians_overload!(Add, add, +);
 radians_overload!(Sub, sub, -);
 radians_overload!(Mul, mul, *);
 radians_overload!(Div, div, /);
+radians_assign_overload!(AddAssign, add_assign, +=);
+radians_assign_overload!(SubAssign, sub_assign, -=);
+radians_assign_overload!(MulAssign, mul_assign, *=);
+radians_assign_overload!(DivAssign, div_assign, /=);
 
 impl Radians {
     pub const fn from_degrees(input: f64) -> Self {
