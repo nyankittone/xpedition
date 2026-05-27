@@ -342,8 +342,8 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     const MAIN_BOOSTER_ACCELERATION: f64 = 80000.0;
     const TURBO_BOOSTER_ACCELERATION: f64 = 500000.0;
 
-    const STATIC_DECELERATION: f64 = 120.0;
-    const DYNAMIC_DECELERATION_FACTOR: f64 = 0.07;
+    const STATIC_DECELERATION: f64 = 1800.0;
+    const DYNAMIC_DECELERATION_FACTOR: f64 = 0.275;
 
     const ROTATION_TORQUE: f64 = 7.0;
 
@@ -361,8 +361,12 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
 
     let deceleration_ratio = {
         let combined_velocity = (state.player.velocity.x.powf(2.0) + state.player.velocity.y.powf(2.0)).sqrt();
-        let deceleration = STATIC_DECELERATION + combined_velocity * DYNAMIC_DECELERATION_FACTOR;
-        (deceleration / combined_velocity).abs()
+        if combined_velocity == 0.0 {
+            0.0
+        } else {
+            let deceleration = STATIC_DECELERATION + combined_velocity * DYNAMIC_DECELERATION_FACTOR;
+            deceleration / combined_velocity
+        }
     };
 
     // I will be real asf, these calculations are probably not fully correct. I was really
