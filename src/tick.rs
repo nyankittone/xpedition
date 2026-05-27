@@ -359,22 +359,17 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
         speed_mod += MAIN_BOOSTER_ACCELERATION;
     }
 
-    let deceleration = STATIC_DECELERATION + (state.player.velocity.x.powf(2.0) + state.player.velocity.y.powf(2.0)).sqrt() * DYNAMIC_DECELERATION_FACTOR;
+    let deceleration_ratio = {
+        let combined_velocity = (state.player.velocity.x.powf(2.0) + state.player.velocity.y.powf(2.0)).sqrt();
+        let deceleration = STATIC_DECELERATION + combined_velocity * DYNAMIC_DECELERATION_FACTOR;
+        (deceleration / combined_velocity).abs()
+    };
 
     // I will be real asf, these calculations are probably not fully correct. I was really
     // sleep-deprived when writing this. TODO: Check accuracy of this BS.
     let deceleration_vector = GameVector {
-        x: if state.player.velocity.x < 0.0 {
-            f64::min(0.0, state.player.velocity.x - deceleration * f64::sin(state.player.rotation.into()))
-        } else {
-            f64::max(0.0, state.player.velocity.x + deceleration * f64::sin(state.player.rotation.into()))
-        },
-        y: if state.player.velocity.y < 0.0 {
-            f64::min(0.0, state.player.velocity.y + deceleration * -f64::cos(state.player.rotation.into()))
-        } else {
-            f64::max(0.0, state.player.velocity.y - deceleration * -f64::cos(state.player.rotation.into()))
-        },
-
+        x: state.player.velocity.x * deceleration_ratio,
+        y: state.player.velocity.y * deceleration_ratio,
     };
 
     let velocity_mod = GameVector {
