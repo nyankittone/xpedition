@@ -348,6 +348,8 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     const DYNAMIC_DECELERATION_FACTOR: f64 = 0.275;
 
     const ROTATION_TORQUE: f64 = 7.0;
+    const STATIC_ANGULAR_DECELERATION: f64 = 0.5;
+    const DYNAMIC_ANGULAR_DECELLERATION_FACTOR: f64 = 0.1;
 
     // Updating position
     // TODO: HOLY SHIT BRAH LEARN HOW TO DO INTEGRALS FOR APPLYING ACCELERATION PERFECTLY YOU
@@ -398,9 +400,15 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     state.player.velocity += velocity_mod / 2.0 * delta_time;
 
     // Updating rotation
-    // TODO: Figure out how to dampen rotation velocity, and have a system for switching direction
-    // to opposite on pressing S.
-    let rotation_mod = match state.player_control {
+    // TODO: It would be fun to see if I could reduce the number of potential branches taken here...
+    // In the future, if I need to optimize.
+    let mut rotation_mod = if state.player.rotation_velocity > 0.0 {
+        -STATIC_ANGULAR_DECELERATION 
+    } else {
+        STATIC_ANGULAR_DECELERATION 
+    };
+
+    rotation_mod += match state.player_control {
         events::PlayerControl {
             rotate_left: true,
             rotate_right: false,
@@ -413,6 +421,7 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
         } => ROTATION_TORQUE,
         _ => 0.0,
     };
+
     state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
     state.player.rotation += state.player.rotation_velocity * delta_time;
     state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
