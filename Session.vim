@@ -10,18 +10,18 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
 endif
 let s:shortmess_save = &shortmess
 set shortmess+=aoO
-badd +396 src/render.rs
+badd +1 src/render.rs
 badd +113 src/events.rs
 badd +59 src/main.rs
 badd +71 src/render_entities.rs
 badd +25 src/entities.rs
 badd +1 src/render_pipeline.rs
-badd +362 src/tick.rs
-badd +9057 term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
+badd +1 src/tick.rs
+badd +61 term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
 badd +23 term://~/Projects/Programming/xpedition//69100:/usr/bin/bash
 badd +1 src/physics.rs
-badd +9 src/lib.rs
-badd +103 src/math_types.rs
+badd +1 src/lib.rs
+badd +1 src/math_types.rs
 argglobal
 %argdel
 $argadd src/render.rs
@@ -52,9 +52,9 @@ set winheight=1
 set winminwidth=0
 set winwidth=1
 exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
-exe '2resize ' . ((&lines * 44 + 29) / 59)
+exe '2resize ' . ((&lines * 19 + 29) / 58)
 exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
-exe '3resize ' . ((&lines * 11 + 29) / 59)
+exe '3resize ' . ((&lines * 35 + 29) / 58)
 exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
 argglobal
 balt src/main.rs
@@ -68,7 +68,7 @@ setlocal foldnestmax=20
 setlocal foldenable
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 31 - ((30 * winheight(0) + 28) / 56)
+let s:l = 31 - ((29 * winheight(0) + 27) / 55)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -89,12 +89,12 @@ setlocal foldlevel=0
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-let s:l = 9057 - ((43 * winheight(0) + 22) / 44)
+let s:l = 61 - ((18 * winheight(0) + 9) / 19)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 9057
-normal! 0
+keepjumps 61
+normal! 03|
 lcd ~/Projects/Programming/xpedition
 wincmd w
 argglobal
@@ -113,18 +113,19 @@ setlocal foldnestmax=20
 setlocal foldenable
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 2 - ((1 * winheight(0) + 5) / 11)
+let s:l = 76 - ((26 * winheight(0) + 17) / 35)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 2
+keepjumps 76
 normal! 0
 lcd ~/Projects/Programming/xpedition
 wincmd w
+2wincmd w
 exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
-exe '2resize ' . ((&lines * 44 + 29) / 59)
+exe '2resize ' . ((&lines * 19 + 29) / 58)
 exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
-exe '3resize ' . ((&lines * 11 + 29) / 59)
+exe '3resize ' . ((&lines * 35 + 29) / 58)
 exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
 tabnext
 edit ~/Projects/Programming/xpedition/src/tick.rs
@@ -149,9 +150,9 @@ set winheight=1
 set winminwidth=0
 set winwidth=1
 exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
-exe '2resize ' . ((&lines * 39 + 29) / 59)
+exe '2resize ' . ((&lines * 38 + 29) / 58)
 exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
-exe '3resize ' . ((&lines * 16 + 29) / 59)
+exe '3resize ' . ((&lines * 16 + 29) / 58)
 exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
 argglobal
 balt ~/Projects/Programming/xpedition/src/entities.rs
@@ -165,7 +166,7 @@ setlocal foldnestmax=20
 setlocal foldenable
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 376 - ((42 * winheight(0) + 28) / 56)
+let s:l = 376 - ((41 * winheight(0) + 27) / 55)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -178,6 +179,7 @@ if bufexists(fnamemodify("~/Projects/Programming/xpedition/src/entities.rs", ":p
 if &buftype ==# 'terminal'
   silent file ~/Projects/Programming/xpedition/src/entities.rs
 endif
+balt ~/Projects/Programming/xpedition/src/tick.rs
 setlocal foldmethod=manual
 setlocal foldexpr=0
 setlocal foldmarker={{{,}}}
@@ -188,7 +190,7 @@ setlocal foldnestmax=20
 setlocal foldenable
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 25 - ((24 * winheight(0) + 19) / 39)
+let s:l = 25 - ((23 * winheight(0) + 19) / 38)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -210,18 +212,18 @@ setlocal foldlevel=0
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-let s:l = 9057 - ((15 * winheight(0) + 8) / 16)
+let s:l = 25 - ((7 * winheight(0) + 8) / 16)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 9057
+keepjumps 25
 normal! 03|
 lcd ~/Projects/Programming/xpedition
 wincmd w
 exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
-exe '2resize ' . ((&lines * 39 + 29) / 59)
+exe '2resize ' . ((&lines * 38 + 29) / 58)
 exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
-exe '3resize ' . ((&lines * 16 + 29) / 59)
+exe '3resize ' . ((&lines * 16 + 29) / 58)
 exe 'vert 3resize ' . ((&columns * 118 + 118) / 237)
 tabnext
 edit ~/Projects/Programming/xpedition/src/math_types.rs
@@ -255,7 +257,7 @@ setlocal foldnestmax=20
 setlocal foldenable
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 103 - ((18 * winheight(0) + 28) / 56)
+let s:l = 103 - ((18 * winheight(0) + 27) / 55)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -268,6 +270,7 @@ if bufexists(fnamemodify("term://~/Projects/Programming/xpedition//33189:/usr/bi
 if &buftype ==# 'terminal'
   silent file term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
 endif
+balt term://~/Projects/Programming/xpedition//33189:/usr/bin/bash
 setlocal foldmethod=manual
 setlocal foldexpr=0
 setlocal foldmarker={{{,}}}
@@ -276,12 +279,12 @@ setlocal foldlevel=0
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-let s:l = 9057 - ((55 * winheight(0) + 28) / 56)
+let s:l = 25 - ((24 * winheight(0) + 27) / 55)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 9057
-normal! 0
+keepjumps 25
+normal! 03|
 lcd ~/Projects/Programming/xpedition
 wincmd w
 exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
@@ -318,7 +321,7 @@ setlocal foldnestmax=20
 setlocal foldenable
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 9 - ((8 * winheight(0) + 28) / 56)
+let s:l = 9 - ((8 * winheight(0) + 27) / 55)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
@@ -340,17 +343,17 @@ setlocal foldlevel=0
 setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldenable
-let s:l = 1 - ((0 * winheight(0) + 28) / 56)
+let s:l = 23 - ((22 * winheight(0) + 27) / 55)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 1
-normal! 0
+keepjumps 23
+normal! 019|
 lcd ~/Projects/Programming/xpedition
 wincmd w
 exe 'vert 1resize ' . ((&columns * 118 + 118) / 237)
 exe 'vert 2resize ' . ((&columns * 118 + 118) / 237)
-tabnext 2
+tabnext 1
 set stal=1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
@@ -365,6 +368,7 @@ if filereadable(s:sx)
   exe "source " . fnameescape(s:sx)
 endif
 let &g:so = s:so_save | let &g:siso = s:siso_save
+nohlsearch
 doautoall SessionLoadPost
 unlet SessionLoad
 " vim: set ft=vim :

@@ -338,10 +338,12 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     let old_position = state.player.position;
     let old_rotation = state.player.rotation;
 
-    // I might have to move these outside of this function and have them be global constants.
+    // Constants defined for specifying acceleration from player's boosters.
+    // I might want to move these outside of this function and have them be global constants.
     const MAIN_BOOSTER_ACCELERATION: f64 = 80000.0;
     const TURBO_BOOSTER_ACCELERATION: f64 = 500000.0;
 
+    // Constants defined for the rate at which the player slows down if not boosting.
     const STATIC_DECELERATION: f64 = 1800.0;
     const DYNAMIC_DECELERATION_FACTOR: f64 = 0.275;
 
@@ -358,6 +360,9 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     if state.player_control.main_forward {
         speed_mod += MAIN_BOOSTER_ACCELERATION;
     }
+
+    // Reading this code after not looking at it for 2.5 months is a great way to feel like a huge
+    // idiot
 
     let deceleration_ratio = {
         let combined_velocity = (state.player.velocity.x.powf(2.0) + state.player.velocity.y.powf(2.0)).sqrt();
@@ -393,6 +398,8 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     state.player.velocity += velocity_mod / 2.0 * delta_time;
 
     // Updating rotation
+    // TODO: Figure out how to dampen rotation velocity, and have a system for switching direction
+    // to opposite on pressing S.
     let rotation_mod = match state.player_control {
         events::PlayerControl {
             rotate_left: true,
