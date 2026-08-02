@@ -428,8 +428,6 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     state.player.rotation += state.player.rotation_velocity * delta_time;
     state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
 
-    eprintln!("ANGULAR_VELOCITY IS {}", state.player.rotation_velocity);
-
     proto_pipeline.set_player(
         old_position,
         state.player.position,
