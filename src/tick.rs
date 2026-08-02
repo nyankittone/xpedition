@@ -347,9 +347,9 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     const STATIC_DECELERATION: f64 = 1800.0;
     const DYNAMIC_DECELERATION_FACTOR: f64 = 0.275;
 
-    const ROTATION_TORQUE: f64 = 7.0;
+    const ROTATION_TORQUE: f64 = 9.0;
     const STATIC_ANGULAR_DECELERATION: f64 = 0.5;
-    const DYNAMIC_ANGULAR_DECELLERATION_FACTOR: f64 = 0.1;
+    const DYNAMIC_ANGULAR_DECELLERATION_FACTOR: f64 = 0.67;
 
     // Updating position
     // TODO: HOLY SHIT BRAH LEARN HOW TO DO INTEGRALS FOR APPLYING ACCELERATION PERFECTLY YOU
@@ -401,12 +401,14 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
 
     // Updating rotation
     // TODO: It would be fun to see if I could reduce the number of potential branches taken here...
-    // In the future, if I need to optimize.
+    // In the future, if I need to optimize. I dislike how many if statements there are here.
     let mut rotation_mod = if state.player.rotation_velocity > 0.0 {
         -STATIC_ANGULAR_DECELERATION 
     } else {
         STATIC_ANGULAR_DECELERATION 
     };
+
+    rotation_mod -= state.player.rotation_velocity * DYNAMIC_ANGULAR_DECELLERATION_FACTOR;
 
     rotation_mod += match state.player_control {
         events::PlayerControl {
@@ -425,6 +427,8 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
     state.player.rotation += state.player.rotation_velocity * delta_time;
     state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
+
+    eprintln!("ANGULAR_VELOCITY IS {}", state.player.rotation_velocity);
 
     proto_pipeline.set_player(
         old_position,
