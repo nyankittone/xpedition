@@ -4,6 +4,8 @@ use crate::math_types;
 pub struct Player {
     pub position: math_types::GameVector<i64>,
     pub rotation: math_types::Radians,
+    pub proto_rotation: math_types::Radians,
+    pub turnaround_progress: f64,
     pub velocity: math_types::GameVector<f64>,
     pub rotation_velocity: math_types::UncappedRadians,
     pub health_current: u32,
@@ -20,7 +22,9 @@ impl Player {
     pub fn new() -> Self {
         Self {
             position: math_types::GameVector::new(0, 0),
-            rotation: math_types::Radians::from(0.0),
+            rotation: 0.0.into(),
+            proto_rotation: 0.0.into(),
+            turnaround_progress: 0.0,
             velocity: math_types::GameVector::new(0.0, 0.0),
             rotation_velocity: 0.0,
             health_current: 100,

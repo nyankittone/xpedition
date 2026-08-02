@@ -1,4 +1,5 @@
 use crate::log;
+use core::f64;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem::MaybeUninit;
 use std::sync;
@@ -269,12 +270,18 @@ enum TickSignal {
     StopMe,
 }
 
+#[derive(Copy, Clone)]
+struct PlayerSetMemory {
+    reverse: bool,
+}
+
 struct TickState<'a, const S: usize, const Q: usize, const A: usize, const P: usize> {
     pool: EntityPool<S, Q>,
     pipeline: &'a sync::Mutex<rp::ReadRenderInfo<A, P>>,
     physics_events: mpsc::Receiver<events::PhysicsEvent>,
     player: Player,
     player_control: events::PlayerControl,
+    player_set: PlayerSetMemory,
     camera_position: GameVector<i64>,
 }
 
@@ -289,6 +296,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             physics_events,
             player: Player::new(),
             player_control: events::PlayerControl::new(),
+            player_set: PlayerSetMemory { reverse: false, },
             camera_position: GameVector::new(0, 0),
         }
     }
@@ -299,11 +307,14 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
             match event {
                 pe::Stop => {
                     return TickSignal::StopMe;
-                }
+                },
                 pe::PlayerControl(control) => {
                     eprintln!("{:?}", control);
                     self.player_control = control;
-                }
+                },
+                pe::PlayerSet(events::PlayerSet::Reverse) => {
+                    self.player_set.reverse = true;
+                },
                 _ => (),
             }
         }
@@ -317,8 +328,7 @@ impl<'a, const S: usize, const Q: usize, const A: usize, const P: usize> TickSta
 
         let _ = self.pool.flush_queue();
 
-        // handle player-specific physics. This owuld make sense to move out to another function if
-        // it grows in size.
+        // handle player-specific physics.
         update_player(self, delta_time, &mut proto_pipeline);
 
         // push the worked-on pipeline so the renderer can now use it
@@ -409,7 +419,6 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     };
 
     rotation_mod -= state.player.rotation_velocity * DYNAMIC_ANGULAR_DECELLERATION_FACTOR;
-
     rotation_mod += match state.player_control {
         events::PlayerControl {
             rotate_left: true,
@@ -425,8 +434,25 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
     };
 
     state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
-    state.player.rotation += state.player.rotation_velocity * delta_time;
+    state.player.proto_rotation += state.player.rotation_velocity * delta_time;
     state.player.rotation_velocity += rotation_mod / 2.0 * delta_time;
+
+    // Do partial lerping of the rotation or something
+    if state.player_set.reverse || state.player.turnaround_progress > 0.0 {
+        // Add to turnaround_progress something based on delta_time
+        // if the turnaround_progress is larger than Pi, add Pi to proto_rotation and set
+        // turnaround_progress to 0
+
+        state.player_set.reverse = false;
+
+        state.player.turnaround_progress += delta_time * f64::consts::PI * 10.0;
+        if state.player.turnaround_progress >= f64::consts::PI {
+            state.player.proto_rotation += f64::consts::PI;
+            state.player.turnaround_progress = 0.0;
+        }
+    }
+
+    state.player.rotation = state.player.proto_rotation + state.player.turnaround_progress;
 
     proto_pipeline.set_player(
         old_position,

@@ -104,6 +104,7 @@ pub fn listen(
                     let sym = sym.raw();
                     sym == key::s || sym == key::S
                 } {
+                    eprintln!("Reversing direction!");
                     send_physics
                         .send(PhysicsEvent::PlayerSet(PlayerSet::Reverse))
                         .unwrap();
