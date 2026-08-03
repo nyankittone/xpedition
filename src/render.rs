@@ -378,7 +378,6 @@ impl DisplayState {
         pipeline: &sync::Mutex<rp::ReadRenderInfo<A, P>>,
         render_events: mpsc::Receiver<events::RenderEvent>,
     ) -> Result<(), XError> {
-        // thread::sleep(time::Duration::from_secs(1)); // TODO: Remove this and fix panic.
         let mut debug_text_buffer = String::new();
 
         'biggie: loop {
@@ -403,11 +402,25 @@ impl DisplayState {
                 Some(player) => player,
                 None => continue,
             };
+            let camera = pipeline_copy.get_camera();
 
+            // Render stars in background.
+            // Should I just have the star positions and distances from the camera be fully
+            // randomized? Or should I have this data loaded from a text file? If I load from a
+            // file, I would like to pull in serde-json so I can have this data just stored as a
+            // JSON file in assets. If I randomly generate them, I'll need a library for that too,
+            // and keep a specific seed set for generating them. Also would probably have to make
+            // the randomizer so that it won't just put a bunch of stars in one location.
+            // I think I will just randomly generatee them away and not load data from a file.
+
+
+            // TODO: It would be nice to have debug info customizable.
             debug_text_buffer.clear();
-            let _ = write!(debug_text_buffer, "new: {:?}", player.end_position);
-            self.display
-                .image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
+            let _ = write!(debug_text_buffer, "pos: {:?}", player.end_position);
+            self.display.image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
+            debug_text_buffer.clear();
+            let _ = write!(debug_text_buffer, "cam: {:?}", camera.end_position);
+            self.display.image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
 
             self.render_player(&player)?;
 
