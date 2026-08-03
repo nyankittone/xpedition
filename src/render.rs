@@ -219,10 +219,20 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     Ok(false)
 }
 
+pub struct StarPoint {
+    pub x: i32,
+    pub y: i32,
+    pub depth: f32,
+}
+
+const STAR_COUNT: usize = 512;
+
 pub struct DisplayState {
     pub display: RustConnection,
     pub keysymmer: Keysymmer,
     pub gc: u32,
+    pub stars: [StarPoint; STAR_COUNT], // This is a decent amount of data, and it might make sense to group
+                                // it into some Boxed structure.
     pub player_gc: u32,
     pub player_pixel_normal: u32,
     pub player_pixel_boost: u32,
@@ -238,6 +248,18 @@ const LINE_THICKNESS: u32 = 5;
 const MID_X: i32 = WIDTH as i32 / 2;
 const MID_Y: i32 = HEIGHT as i32 / 2;
 const SCALE_FACTOR: i64 = 240;
+
+use rand::prelude::*;
+
+fn generate_stars() -> [StarPoint; STAR_COUNT] {
+    let mut rng = rand::rngs::ChaCha8Rng::seed_from_u64(69);
+
+    std::array::from_fn(|_| StarPoint {
+        x: rng.random_range(0..6000),
+        y: rng.random_range(0..4000),
+        depth: 1.0,
+    })
+}
 
 impl DisplayState {
     pub fn new(args: &Args) -> Result<Self, XError> {
@@ -354,6 +376,7 @@ impl DisplayState {
         Ok(Self {
             display,
             gc,
+            stars: generate_stars(),
             player_gc,
             player_pixel_normal,
             player_pixel_boost,
@@ -411,8 +434,11 @@ impl DisplayState {
             // JSON file in assets. If I randomly generate them, I'll need a library for that too,
             // and keep a specific seed set for generating them. Also would probably have to make
             // the randomizer so that it won't just put a bunch of stars in one location.
-            // I think I will just randomly generatee them away and not load data from a file.
-
+            // I think I will just randomly generate them away and not load data from a file.
+            // I should move to using a struct of arrays for more data structures grrrr
+            for star in &self.stars {
+                self.display.poly_point(CoordMode::ORIGIN, self.window, self.gc, &[Point {x: star.x as i16, y: star.y as i16}])?;
+            }
 
             // TODO: It would be nice to have debug info customizable.
             debug_text_buffer.clear();
