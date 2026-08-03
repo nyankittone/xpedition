@@ -2,6 +2,7 @@ extern crate x11rb;
 
 use core::f64;
 use std::fmt::{self, Debug, Display, Write as _};
+use std::mem::{ManuallyDrop, MaybeUninit};
 use std::sync::{self, mpsc};
 use std::{thread, time};
 
@@ -234,8 +235,9 @@ pub struct DisplayState {
     pub display: RustConnection,
     pub keysymmer: Keysymmer,
     pub gc: u32,
-    pub stars: [Point; STAR_COUNT],
+    pub star_gcs: [u32; 6],
     pub player_gc: u32,
+    pub stars: [Point; STAR_COUNT],
     pub player_pixel_normal: u32,
     pub player_pixel_boost: u32,
     pub player_pixel_big_boost: u32,
@@ -250,7 +252,6 @@ const LINE_THICKNESS: u32 = 5;
 const MID_X: i32 = WIDTH as i32 / 2;
 const MID_Y: i32 = HEIGHT as i32 / 2;
 const SCALE_FACTOR: i64 = 240;
-
 
 impl DisplayState {
     pub fn new(args: &Args) -> Result<Self, XError> {
@@ -272,6 +273,35 @@ impl DisplayState {
             display.generate_id()?,
             display.generate_id()?,
         );
+
+        // I should really stop being all fancy-pantsy with unsafe Rust when I don't prove that the
+        // safe code's slowness gets optimized away
+        let mut star_gcs = [const { MaybeUninit::uninit() }; 6];
+        for mut protostar in star_gcs {
+            protostar.write(display.generate_id()?);
+        }
+        let star_gcs = unsafe { std::mem::transmute::<_, [u32; 6]>(star_gcs) };
+
+        let mut star_colors = [
+            Some(display.alloc_color(
+                screen.default_colormap,
+                (u16::MAX as f64 * 0.75) as u16,
+                (u16::MAX as f64 * 0.75) as u16,
+                (u16::MAX as f64 * 0.75) as u16,
+            )?),
+            Some(display.alloc_color(
+                screen.default_colormap,
+                (u16::MAX as f64 * 0.50) as u16,
+                (u16::MAX as f64 * 0.50) as u16,
+                (u16::MAX as f64 * 0.50) as u16,
+            )?),
+            Some(display.alloc_color(
+                screen.default_colormap,
+                (u16::MAX as f64 * 0.25) as u16,
+                (u16::MAX as f64 * 0.25) as u16,
+                (u16::MAX as f64 * 0.25) as u16,
+            )?),
+        ];
 
         let keysymmer = ProtoKeysymmer::init(&display)?;
 
@@ -357,6 +387,23 @@ impl DisplayState {
                 .line_width(LINE_THICKNESS),
         )?;
 
+        for (gc_id, (color, width)) in star_gcs.iter().zip([
+            (screen.white_pixel, 3),
+            (screen.white_pixel, 2),
+            (screen.white_pixel, 1),
+            (std::mem::take(&mut star_colors[0]).unwrap().reply()?.pixel, 1),
+            (std::mem::take(&mut star_colors[1]).unwrap().reply()?.pixel, 1),
+            (std::mem::take(&mut star_colors[2]).unwrap().reply()?.pixel, 1),
+        ]) {
+            display.create_gc(
+                *gc_id,
+                screen.root,
+                &CreateGCAux::default().foreground(color).line_width(width),
+            )?;
+        }
+
+        drop(star_colors);
+
         // Await everything else we haven't used yet
         let player_pixel_boost = player_pixel_boost.reply()?.pixel;
         let player_pixel_big_boost = player_pixel_big_boost.reply()?.pixel;
@@ -367,6 +414,7 @@ impl DisplayState {
         Ok(Self {
             display,
             gc,
+            star_gcs,
             stars: generate_stars(),
             player_gc,
             player_pixel_normal,
@@ -419,18 +467,18 @@ impl DisplayState {
             let camera = pipeline_copy.get_camera();
 
             // Render stars in background.
-            // for star in &self.stars {
-            //     self.display.poly_point(CoordMode::ORIGIN, self.window, self.gc, &[Point {x: star.x as i16, y: star.y as i16}])?;
-            // }
-            self.display.poly_point(CoordMode::ORIGIN, self.window, self.gc, &self.stars)?;
+            self.display
+                .poly_point(CoordMode::ORIGIN, self.window, self.gc, &self.stars)?;
 
             // TODO: It would be nice to have debug info customizable.
             debug_text_buffer.clear();
             let _ = write!(debug_text_buffer, "pos: {:?}", player.end_position);
-            self.display.image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
+            self.display
+                .image_text8(self.window, self.gc, 10, 20, debug_text_buffer.as_bytes())?;
             debug_text_buffer.clear();
             let _ = write!(debug_text_buffer, "cam: {:?}", camera.end_position);
-            self.display.image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
+            self.display
+                .image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
 
             self.render_player(&player)?;
 
