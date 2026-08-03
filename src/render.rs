@@ -220,7 +220,7 @@ fn load_the_font(args: &Args, display: &impl Connection, font_id: u32) -> Result
     Ok(false)
 }
 
-const STAR_COUNT: usize = 512;
+const STAR_COUNT: usize = 800;
 use rand::prelude::*;
 
 fn generate_stars() -> [Point; STAR_COUNT] {
@@ -276,11 +276,17 @@ impl DisplayState {
 
         // I should really stop being all fancy-pantsy with unsafe Rust when I don't prove that the
         // safe code's slowness gets optimized away
-        let mut star_gcs = [const { MaybeUninit::uninit() }; 6];
-        for mut protostar in star_gcs {
-            protostar.write(display.generate_id()?);
+        // let mut star_gcs = [const { MaybeUninit::uninit() }; 6];
+        // for mut protostar in star_gcs {
+        //     protostar.write(display.generate_id()?);
+        // }
+        // let star_gcs = unsafe { std::mem::transmute::<_, [u32; 6]>(star_gcs) };
+
+        // Lame but functional and safe approach lol
+        let mut star_gcs = [0u32; 6];
+        for i in 0..star_gcs.len() {
+            star_gcs[i] = display.generate_id()?;
         }
-        let star_gcs = unsafe { std::mem::transmute::<_, [u32; 6]>(star_gcs) };
 
         let mut star_colors = [
             Some(display.alloc_color(
@@ -373,7 +379,7 @@ impl DisplayState {
         // create GCs
         display.create_gc(
             gc,
-            screen.root,
+            window,
             &CreateGCAux::default()
                 .foreground(screen.white_pixel)
                 .line_width(LINE_THICKNESS)
@@ -381,7 +387,7 @@ impl DisplayState {
         )?;
         display.create_gc(
             player_gc,
-            screen.root,
+            window,
             &CreateGCAux::default()
                 .foreground(player_pixel_normal)
                 .line_width(LINE_THICKNESS),
@@ -397,8 +403,8 @@ impl DisplayState {
         ]) {
             display.create_gc(
                 *gc_id,
-                screen.root,
-                &CreateGCAux::default().foreground(color).line_width(width),
+                window,
+                &CreateGCAux::default().foreground(color).line_width(width).cap_style(CapStyle::ROUND),
             )?;
         }
 
@@ -467,10 +473,18 @@ impl DisplayState {
             let camera = pipeline_copy.get_camera();
 
             // Render stars in background.
-            self.display
-                .poly_point(CoordMode::ORIGIN, self.window, self.gc, &self.stars)?;
+            // self.display
+            //     .poly_point(CoordMode::ORIGIN, self.window, self.gc, &self.stars)?;
+            for (i, gc) in self.star_gcs.iter().enumerate() {
+                let from = i * STAR_COUNT / 6;
+                let to = (i + 1) * STAR_COUNT / 6;
 
-            // TODO: It would be nice to have debug info customizable.
+                for star in &self.stars[from..to] {
+                    self.display.poly_line(CoordMode::ORIGIN, self.window, *gc, &[*star, *star])?;
+                }
+            }
+
+            // TODO: It would be nice to have debug info customizable and togglable.
             debug_text_buffer.clear();
             let _ = write!(debug_text_buffer, "pos: {:?}", player.end_position);
             self.display
