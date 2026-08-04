@@ -274,15 +274,6 @@ impl DisplayState {
             display.generate_id()?,
         );
 
-        // I should really stop being all fancy-pantsy with unsafe Rust when I don't prove that the
-        // safe code's slowness gets optimized away
-        // let mut star_gcs = [const { MaybeUninit::uninit() }; 6];
-        // for mut protostar in star_gcs {
-        //     protostar.write(display.generate_id()?);
-        // }
-        // let star_gcs = unsafe { std::mem::transmute::<_, [u32; 6]>(star_gcs) };
-
-        // Lame but functional and safe approach lol
         let mut star_gcs = [0u32; 6];
         for i in 0..star_gcs.len() {
             star_gcs[i] = display.generate_id()?;
@@ -473,15 +464,9 @@ impl DisplayState {
             let camera = pipeline_copy.get_camera();
 
             // Render stars in background.
-            // self.display
-            //     .poly_point(CoordMode::ORIGIN, self.window, self.gc, &self.stars)?;
-            for (i, gc) in self.star_gcs.iter().enumerate() {
-                let from = i * STAR_COUNT / 6;
-                let to = (i + 1) * STAR_COUNT / 6;
-
-                for star in &self.stars[from..to] {
-                    self.display.poly_line(CoordMode::ORIGIN, self.window, *gc, &[*star, *star])?;
-                }
+            for (i, star) in self.stars.iter().enumerate() {
+                let gc = self.star_gcs[i * 6 / STAR_COUNT];
+                self.display.poly_line(CoordMode::ORIGIN, self.window, gc, &[*star, *star])?;
             }
 
             // TODO: It would be nice to have debug info customizable and togglable.
