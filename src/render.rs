@@ -466,11 +466,12 @@ impl DisplayState {
             // Render stars in background.
             for (i, star) in self.stars.iter().enumerate() {
                 let gc = self.star_gcs[i * 6 / STAR_COUNT];
+                let depth_modifier = ((STAR_COUNT + i * 3) / (STAR_COUNT / 100)) as i64;
 
                 // Determine where the star should effectively be located relative to the camera
                 let final_star = Point {
-                    x: (star.x as i64 + camera.end_position.x / -3000) as i16 - 500,
-                    y: (star.y as i64 + camera.end_position.y / -3000) as i16 - 500,
+                    x: (star.x as i64 + camera.end_position.x / -24 / depth_modifier) as i16 - 500,
+                    y: (star.y as i64 + camera.end_position.y / -24 / depth_modifier) as i16 - 500,
                 };
                 self.display.poly_line(CoordMode::ORIGIN, self.window, gc, &[final_star, final_star])?;
             }
