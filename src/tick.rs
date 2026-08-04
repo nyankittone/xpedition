@@ -469,7 +469,7 @@ fn update_player<const S: usize, const Q: usize, const A: usize, const P: usize>
             _ => rp::BoosterState::None,
         },
     );
-    proto_pipeline.set_camera(state.camera_position, state.camera_position);
+    proto_pipeline.set_camera(old_position, state.player.position);
 }
 
 pub fn start_physics<const A: usize, const P: usize>(

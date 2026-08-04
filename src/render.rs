@@ -466,7 +466,13 @@ impl DisplayState {
             // Render stars in background.
             for (i, star) in self.stars.iter().enumerate() {
                 let gc = self.star_gcs[i * 6 / STAR_COUNT];
-                self.display.poly_line(CoordMode::ORIGIN, self.window, gc, &[*star, *star])?;
+
+                // Determine where the star should effectively be located relative to the camera
+                let final_star = Point {
+                    x: (star.x as i64 + camera.end_position.x / -3000) as i16 - 500,
+                    y: (star.y as i64 + camera.end_position.y / -3000) as i16 - 500,
+                };
+                self.display.poly_line(CoordMode::ORIGIN, self.window, gc, &[final_star, final_star])?;
             }
 
             // TODO: It would be nice to have debug info customizable and togglable.
@@ -479,7 +485,7 @@ impl DisplayState {
             self.display
                 .image_text8(self.window, self.gc, 10, 40, debug_text_buffer.as_bytes())?;
 
-            self.render_player(&player)?;
+            self.render_player(&player, &camera)?;
 
             self.display.flush()?;
             thread::sleep(time::Duration::from_millis(1));
@@ -491,7 +497,7 @@ impl DisplayState {
     // Should I have this rendering function do lerping of the player position on its own, or have
     // it fed in an already lerped player info? I think the former is cleaner and will be more
     // consistent in code.
-    pub fn render_player(&self, player: &render_pipeline::PlayerRender) -> Result<(), XError> {
+    pub fn render_player(&self, player: &render_pipeline::PlayerRender, camera: &render_pipeline::CameraRender) -> Result<(), XError> {
         // TODO: See if we get any significant performance boost by caching the booster color state.
         self.display.change_gc(
             self.player_gc,
@@ -530,16 +536,18 @@ impl DisplayState {
             },
         ];
 
+        let final_player_position_end = player.end_position - camera.end_position;
+
         let transformed_points = POINTS.map(|input| Point {
             x: ((f64::sin(f64::from(input.angle) + player.end_rotation as f64)
                 * (input.length as f64)) as i64
                 + (WIDTH as i64 / 2)
-                + (player.end_position.x / SCALE_FACTOR)) as i16,
+                + (final_player_position_end.x / SCALE_FACTOR)) as i16,
             y: ((f64::cos(f64::from(input.angle) + player.end_rotation as f64)
                 * (input.length as f64)) as i64
                 * -1
                 + (HEIGHT as i64 / 2)
-                + (player.end_position.y / SCALE_FACTOR)) as i16,
+                + (final_player_position_end.y / SCALE_FACTOR)) as i16,
         });
 
         self.display.poly_line(
