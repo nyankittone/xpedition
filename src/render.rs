@@ -469,10 +469,15 @@ impl DisplayState {
                 let depth_modifier = ((STAR_COUNT + i * 3) / (STAR_COUNT / 100)) as i64;
 
                 // Determine where the star should effectively be located relative to the camera
-                let final_star = Point {
-                    x: (star.x as i64 + camera.end_position.x / -24 / depth_modifier) as i16 - 500,
-                    y: (star.y as i64 + camera.end_position.y / -24 / depth_modifier) as i16 - 500,
+                let final_star = GameVector {
+                    x: star.x as i64 + camera.end_position.x / -24 / depth_modifier,
+                    y: star.y as i64 + camera.end_position.y / -24 / depth_modifier,
                 };
+                let final_star = Point {
+                    x: ((final_star.x % 6000 + 6000) % 6000) as i16 - 500,
+                    y: ((final_star.y % 4000 + 4000) % 4000) as i16 - 500,
+                };
+
                 self.display.poly_line(CoordMode::ORIGIN, self.window, gc, &[final_star, final_star])?;
             }
 
