@@ -464,6 +464,7 @@ impl DisplayState {
             let camera = pipeline_copy.get_camera();
 
             // Render stars in background.
+            // TODO: Define some constants for some of the values used to render this stuff.
             for (i, star) in self.stars.iter().enumerate() {
                 let gc = self.star_gcs[i * 6 / STAR_COUNT];
                 let depth_modifier = ((STAR_COUNT + i * 3) / (STAR_COUNT / 100)) as i64;
